@@ -224,9 +224,15 @@
         }
 
         // Save the API key to localStorage and close the prompt
+        // Show the API key prompt when the modify key button is clicked
+        function showKeyPrompt() {
+            document.getElementById('key-prompt').style.display = 'flex';
+        }
+        
+        // Save the new API key to localStorage and close the prompt
         function saveApiKey() {
             apiKey = document.getElementById('key-input').value.trim();
-
+        
             if (apiKey) {
                 localStorage.setItem('geminiApiKey', apiKey);
                 document.getElementById('key-prompt').style.display = 'none'; // Close the prompt
