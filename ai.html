@@ -197,6 +197,7 @@
     </div>
 
     <button id="modify-key-button" onclick="showKeyPrompt()" style="position: fixed; top: 20px; right: 20px; background: none; border: none; cursor: pointer; transition: background 0.3s;">
+        <img src="https://i.imgur.com/56C5d5r.png" alt="Modify Key" style="width: 20px; height: 20px;">
         <img src="https://i.imgur.com/56C5d5r.png" alt="Modify Key" style="width: 25px; height: 25px;">
     </button>
 
@@ -214,7 +215,7 @@
     <script>
         let conversations = [];
         let currentChat = [];
-        
+
         // Check if the API key is stored in localStorage
         let apiKey = localStorage.getItem('geminiApiKey');
 
@@ -222,16 +223,16 @@
         if (!apiKey) {
             document.getElementById('key-prompt').style.display = 'flex';
         }
-        
+
         // Show the API key prompt when the modify key button is clicked
         function showKeyPrompt() {
             document.getElementById('key-prompt').style.display = 'flex';
         }
-        
+
         // Save the new API key to localStorage and close the prompt
         function saveApiKey() {
             apiKey = document.getElementById('key-input').value.trim();
-        
+
             if (apiKey) {
                 localStorage.setItem('geminiApiKey', apiKey);
                 document.getElementById('key-prompt').style.display = 'none'; // Close the prompt
@@ -241,7 +242,7 @@
         }
 
         async function fetchGeminiResponse(prompt) {
-            const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const response = await fetch(url, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
@@ -292,11 +293,9 @@
 
         function formatText(text) {
             return text
-                .replace(/
-(.*?)\n([\s\S]*?)
-/g, function(match, lang, code) {
+                .replace(/```(.*?)\n([\s\S]*?)```/g, function(match, lang, code) {
                     let cleanedCode = code.replace(/^(\S+)\n/, '');
-                    return <pre class="code-block"><code>${cleanedCode}</code></pre>;
+                    return `<pre class="code-block"><code>${cleanedCode}</code></pre>`;
                 })
                 .replace(/\*\*(.*?)\*\*/g, '<span style="font-weight: bold;">$1</span>') // Bold only if inside ** 
                 .replace(/\*(?=[^*])/g, '·') // Replace single * with ·
