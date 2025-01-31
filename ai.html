@@ -149,8 +149,27 @@
         let conversations = [];
         let currentChat = [];
 
+        // Check if the API key is stored in localStorage
+        let apiKey = localStorage.getItem('geminiApiKey');
+        
+        // If no key is found, ask for it
+        if (!apiKey) {
+            alert("To use this service, you need to create a Gemini API key. Please visit the Gemini website, generate your API key, and paste it here.");
+
+            // Prompt the user to enter the key
+            apiKey = prompt("Paste your Gemini API key here:");
+
+            // Store the key in localStorage for future use (it persists until the browser cache is cleared)
+            if (apiKey) {
+                localStorage.setItem('geminiApiKey', apiKey);
+            } else {
+                alert("API key is required to proceed.");
+                // Optionally, you could redirect or disable further interactions
+                return;
+            }
+        }
+
         async function fetchGeminiResponse(prompt) {
-            const apiKey = "AIzaSyAlbwPWsyQbQtf6t7l9MZOXSNrqc6NvtlQ";
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const response = await fetch(url, {
                 method: "POST",
@@ -200,7 +219,7 @@
                     let cleanedCode = code.replace(/^(\S+)\n/, '');
                     return `<pre class="code-block"><code>${cleanedCode}</code></pre>`;
                 })
-                .replace(/\*\*(.*?)\*\*/g, '<span style="font-weight: bold;">$1</span>') // Bold only if inside **
+                .replace(/\*\*(.*?)\*\*/g, '<span style="font-weight: bold;">$1</span>') // Bold only if inside ** 
                 .replace(/\*(?=[^*])/g, '·') // Replace single * with ·
                 .replace(/\n/g, '<br>'); // Preserve new lines
         }
