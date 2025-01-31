@@ -179,6 +179,10 @@
         #key-prompt button:hover {
             background: #005ecb;
         }
+
+        #modify-key-button:hover {
+            background: #005ecb;
+        }
     </style>
 </head>
 
@@ -191,6 +195,11 @@
             <button id="send-button" onclick="sendMessage()">Send</button>
         </div>
     </div>
+
+    <button id="modify-key-button" onclick="showKeyPrompt()" style="position: fixed; top: 20px; right: 20px; background: #0078ff; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; transition: background 0.3s;">
+        Manage Keys
+    </button>
+
 
     <!-- API Key Prompt Modal -->
     <div id="key-prompt">
