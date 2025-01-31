@@ -197,7 +197,7 @@
     </div>
 
     <button id="modify-key-button" onclick="showKeyPrompt()" style="position: fixed; top: 20px; right: 20px; background: none; border: none; cursor: pointer; transition: background 0.3s;">
-        <img src="https://i.imgur.com/56C5d5r.png" alt="Modify Key" style="width: 40px; height: 40px;">
+        <img src="https://i.imgur.com/56C5d5r.png" alt="Modify Key" style="width: 20px; height: 20px;">
     </button>
 
 
@@ -222,8 +222,7 @@
         if (!apiKey) {
             document.getElementById('key-prompt').style.display = 'flex';
         }
-
-        // Save the API key to localStorage and close the prompt
+        
         // Show the API key prompt when the modify key button is clicked
         function showKeyPrompt() {
             document.getElementById('key-prompt').style.display = 'flex';
