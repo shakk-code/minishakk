@@ -1,99 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <title>miniGPT</title>
-    <style>
-        body {
-            font-family: 'Inter', system-ui, sans-serif;
-            background: linear-gradient(to right, #0d0d0d, #0d0d0d);
-            color: #fff;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-        h1 {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2rem;
-        }
-        #chat-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            max-height: calc(100vh - 150px);
-            justify-content: flex-start;
-            gap: 20px;
-        }
-        .message {
-            max-width: 60%;
-            padding: 12px;
-            margin: 0;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: normal;
-            word-wrap: break-word;
-            display: inline-block;
-        }
-        .user { background: #0078ff; color: white; align-self: flex-end; border-radius: 15px 15px 0 15px; }
-        .bot { background: #222; color: white; align-self: flex-start; border-radius: 0 15px 15px 15px; }
-        #input-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #1e1e1e;
-            padding: 10px;
-            border-radius: 10px;
-            position: sticky;
-            bottom: 0;
-            width: 80%;
-            max-width: 800px;
-            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.6);
-        }
-        #user-input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 5px;
-            border: none;
-            background: #2a2a2a;
-            color: white;
-            font-size: 1rem;
-        }
-        #send-button {
-            background: #0078ff;
-            border: none;
-            color: white;
-            cursor: pointer;
-            border-radius: 5px;
-            padding: 12px;
-            margin-left: 10px;
-            transition: background 0.3s;
-        }
-        #key-prompt {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-    </style>
 </head>
-
 <body>
     <div class="container">
         <h1>miniGPT <span class="sub-text">powered by Zephyr-7B</span></h1>
@@ -103,28 +16,42 @@
             <button id="send-button" onclick="sendMessage()">Send</button>
         </div>
     </div>
+
+    <button id="modify-key-button" onclick="showKeyPrompt()" style="position: fixed; top: 20px; right: 20px; background: none; border: none; cursor: pointer;">
+        <img src="https://i.imgur.com/56C5d5r.png" alt="Modify Key" style="width: 25px; height: 25px;">
+    </button>
+
     <div id="key-prompt">
         <div class="modal-content">
             <h2>API Key Required</h2>
-            <p>Enter your Hugging Face API Key:</p>
+            <p>Get your Hugging Face API key from <a href="https://huggingface.co/settings/tokens" target="_blank" style="color: #fff;">here</a>.</p>
             <input type="text" id="key-input" placeholder="Paste your API key here">
             <button onclick="saveApiKey()">Submit Key</button>
         </div>
     </div>
+
     <script>
+        let conversations = [];
         let apiKey = localStorage.getItem('hfApiKey');
-        if (!apiKey) document.getElementById('key-prompt').style.display = 'flex';
-        
+
+        if (!apiKey) {
+            document.getElementById('key-prompt').style.display = 'flex';
+        }
+
+        function showKeyPrompt() {
+            document.getElementById('key-prompt').style.display = 'flex';
+        }
+
         function saveApiKey() {
             apiKey = document.getElementById('key-input').value.trim();
             if (apiKey) {
                 localStorage.setItem('hfApiKey', apiKey);
                 document.getElementById('key-prompt').style.display = 'none';
             } else {
-                alert('Please enter a valid API key!');
+                alert('Please provide a valid API key!');
             }
         }
-        
+
         async function fetchZephyrResponse(prompt) {
             const url = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta";
             const response = await fetch(url, {
@@ -137,35 +64,41 @@
             });
             if (!response.ok) return "Error: " + response.statusText;
             const data = await response.json();
-            return data?.[0]?.generated_text || "Error: No response";
+            return data[0]?.generated_text || "Error: No response";
         }
-        
+
         function sendMessage() {
             const input = document.getElementById('user-input');
             const message = input.value.trim();
             if (!message) return;
+
             if (!apiKey) {
                 document.getElementById('key-prompt').style.display = 'flex';
                 return;
             }
+
             appendMessage(message, 'user');
             input.value = '';
-            fetchZephyrResponse(message).then(response => appendMessage(response, 'bot'));
+
+            fetchZephyrResponse(message).then(response => {
+                appendMessage(response, 'bot');
+            });
         }
-        
+
         function appendMessage(text, sender) {
             const chatContainer = document.getElementById('chat-container');
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', sender);
-            messageDiv.textContent = text;
+            messageDiv.innerText = text;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-        
+
         function handleKeyPress(event) {
-            if (event.key === "Enter") sendMessage();
+            if (event.key === "Enter") {
+                sendMessage();
+            }
         }
     </script>
 </body>
-
 </html>
