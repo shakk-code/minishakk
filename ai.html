@@ -213,39 +213,45 @@
 
     <script>
         let conversations = [];
-        let apiKey = localStorage.getItem('hfApiKey');
+        let currentChat = [];
+        
+        // Check if the API key is stored in localStorage
+        let apiKey = localStorage.getItem('geminiApiKey');
 
+        // Show the prompt if the API key is not available
         if (!apiKey) {
             document.getElementById('key-prompt').style.display = 'flex';
         }
-
+        
+        // Show the API key prompt when the modify key button is clicked
         function showKeyPrompt() {
             document.getElementById('key-prompt').style.display = 'flex';
         }
-
+        
+        // Save the new API key to localStorage and close the prompt
         function saveApiKey() {
             apiKey = document.getElementById('key-input').value.trim();
+        
             if (apiKey) {
-                localStorage.setItem('hfApiKey', apiKey);
-                document.getElementById('key-prompt').style.display = 'none';
+                localStorage.setItem('geminiApiKey', apiKey);
+                document.getElementById('key-prompt').style.display = 'none'; // Close the prompt
             } else {
                 alert('Please provide a valid API key!');
             }
         }
 
-        async function fetchZephyrResponse(prompt) {
-            const url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Coder-32B-Instruct";
+        async function fetchGeminiResponse(prompt) {
+            const url = https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey};
             const response = await fetch(url, {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ inputs: prompt })
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    contents: [{parts: [{text: prompt}]}]
+                })
             });
             if (!response.ok) return "Error: " + response.statusText;
             const data = await response.json();
-            return data[0]?.generated_text || "Error: No response";
+            return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Error: No response";
         }
 
         function sendMessage() {
@@ -253,26 +259,48 @@
             const message = input.value.trim();
             if (!message) return;
 
+            // If no API key is present, show the key prompt
             if (!apiKey) {
                 document.getElementById('key-prompt').style.display = 'flex';
                 return;
             }
 
             appendMessage(message, 'user');
+            currentChat.push({ text: message, sender: 'user' });
+
             input.value = '';
 
-            fetchZephyrResponse(message).then(response => {
+            // Send chat history as plain text (no prefixes)
+            const conversationHistory = currentChat.map(entry => entry.text).join("\n");
+
+            fetchGeminiResponse(conversationHistory).then(response => {
                 appendMessage(response, 'bot');
+                currentChat.push({ text: response, sender: 'bot' });
             });
         }
 
         function appendMessage(text, sender) {
             const chatContainer = document.getElementById('chat-container');
             const messageDiv = document.createElement('div');
+
             messageDiv.classList.add('message', sender);
-            messageDiv.innerText = text;
+            messageDiv.innerHTML = formatText(text); // Apply formatting here
+
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function formatText(text) {
+            return text
+                .replace(/
+(.*?)\n([\s\S]*?)
+/g, function(match, lang, code) {
+                    let cleanedCode = code.replace(/^(\S+)\n/, '');
+                    return <pre class="code-block"><code>${cleanedCode}</code></pre>;
+                })
+                .replace(/\*\*(.*?)\*\*/g, '<span style="font-weight: bold;">$1</span>') // Bold only if inside ** 
+                .replace(/\*(?=[^*])/g, '·') // Replace single * with ·
+                .replace(/\n/g, '<br>'); // Preserve new lines
         }
 
         function handleKeyPress(event) {
