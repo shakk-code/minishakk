@@ -132,6 +132,53 @@
         #user-input:focus {
             outline: none;
         }
+
+        #key-prompt {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #key-prompt .modal-content {
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        #key-prompt input {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+            background: #444;
+            color: white;
+        }
+
+        #key-prompt button {
+            background: #0078ff;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            margin-top: 10px;
+        }
+
+        #key-prompt button:hover {
+            background: #005ecb;
+        }
     </style>
 </head>
 
@@ -145,27 +192,37 @@
         </div>
     </div>
 
+    <!-- API Key Prompt Modal -->
+    <div id="key-prompt">
+        <div class="modal-content">
+            <h2>API Key Required</h2>
+            <p>To use this service, you need to generate an API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #fff;">here</a>.</p>
+            <input type="text" id="key-input" placeholder="Paste your API key here">
+            <button onclick="saveApiKey()">Submit Key</button>
+        </div>
+    </div>
+
     <script>
         let conversations = [];
         let currentChat = [];
-
+        
         // Check if the API key is stored in localStorage
         let apiKey = localStorage.getItem('geminiApiKey');
-        
-        // If no key is found, ask for it
+
+        // Show the prompt if the API key is not available
         if (!apiKey) {
-            alert("To use this service, you need to create a Gemini API key. Please visit the Gemini website, generate your API key, and paste it here.");
+            document.getElementById('key-prompt').style.display = 'flex';
+        }
 
-            // Prompt the user to enter the key
-            apiKey = prompt("Paste your Gemini API key here:");
+        // Save the API key to localStorage and close the prompt
+        function saveApiKey() {
+            apiKey = document.getElementById('key-input').value.trim();
 
-            // Store the key in localStorage for future use (it persists until the browser cache is cleared)
             if (apiKey) {
                 localStorage.setItem('geminiApiKey', apiKey);
+                document.getElementById('key-prompt').style.display = 'none'; // Close the prompt
             } else {
-                alert("API key is required to proceed.");
-                // Optionally, you could redirect or disable further interactions
-                return;
+                alert('Please provide a valid API key!');
             }
         }
 
@@ -187,6 +244,12 @@
             const input = document.getElementById('user-input');
             const message = input.value.trim();
             if (!message) return;
+
+            // If no API key is present, show the key prompt
+            if (!apiKey) {
+                document.getElementById('key-prompt').style.display = 'flex';
+                return;
+            }
 
             appendMessage(message, 'user');
             currentChat.push({ text: message, sender: 'user' });
