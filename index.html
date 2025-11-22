@@ -3,125 +3,425 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>minishakk</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <title>minishakk | everything online</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+  
   <style>
     :root {
-      --fg: 240 10% 96%;
-      --muted: 240 5% 75%;
-      --accent: 220 90% 56%;
-      --accent-2: 280 75% 60%;
-      --card-bg: 0 0% 100% / 0.06;
-      --stroke: 0 0% 100% / 0.12;
-      --btn-bg: 0 0% 100% / 0.12;
-      --btn-bg-hover: 0 0% 100% / 0.18;
+      /* Core Palette */
+      --bg-dark: #030305;
+      --bg-panel: rgba(20, 20, 25, 0.4);
+      --text-main: #ffffff;
+      --text-muted: #a1a1aa;
+      
+      /* Accents */
+      --accent-purple: #c084fc;
+      --accent-glow: #a855f7;
+      --accent-light: #e9d5ff;
+      
+      /* Glass Settings */
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-highlight: rgba(255, 255, 255, 0.15);
+      --glass-blur: 20px;
+      
+      /* Mouse vars */
+      --mx: 0.5;
+      --my: 0.5;
     }
 
-    /* Reset */
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: hsl(var(--fg)); background: #0b0c10; }
-
-    /* Background layers: soft gradient + subtle grain + glow orbs */
-    .bg {
-      position: fixed; inset: 0; z-index: -2;
-      background: radial-gradient(1200px 900px at 20% 10%, rgba(76,110,245,0.22), transparent 60%),
-                  radial-gradient(1000px 800px at 80% 20%, rgba(186,106,255,0.16), transparent 60%),
-                  radial-gradient(900px 900px at 50% 120%, rgba(76,110,245,0.18), transparent 60%),
-                  linear-gradient(180deg, #0b0c10 0%, #0a0b0f 40%, #0b0c10 100%);
+    /* Resets */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
     }
-    .grain { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .08; mix-blend-mode: soft-light; background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAUVBMVEUAAABzc3Nzc3Nzc3Nzc3Nzc3NxcXFycnJ0dHRwcHB0dHRzc3NwcHB0dHRvb29zc3Nzc3NycnJzc3Nzc3Nzc3NxcXFyc3Nzc3NwcHBxcXGgqQJpAAAAHXRSTlMAAQIDBAYICwwQFBUdICstNjpIV2B0gYyTo7fD6rjWb3wAAABUSURBVBgZVc/HDsAgDATQ8w3rJrX//6YpU3U2m7QyFfCwA1P8QYw0w8xq3l2r0n1xw4j6rYwqgQohKX7M5bJm2p7yq8m3bq7w6qgK0r1C9m7QhOqz3mR6k1mC7V0yV3cQxw2QxV2Ck3wBzv4Qd3Rj4nQAAAABJRU5ErkJggg=='); background-size: 128px 128px; }
 
-    /* Layout */
-    .wrap { min-height: 100dvh; display: grid; place-items: center; padding: 64px 20px; }
+    /* --- Typography --- */
+    h1, h2, h3, .brand-font { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.03em; }
+    a { text-decoration: none; color: inherit; transition: 0.3s ease; }
 
-    /* Top nav (kept ultra minimal) */
-    .nav { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; background: linear-gradient(to bottom, rgba(0,0,0,.5), transparent); backdrop-filter: saturate(140%) blur(6px); }
-    .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2))); box-shadow: 0 0 24px rgba(132, 94, 247, .6); }
-    .brand span { font-weight: 800; letter-spacing: 0.2px; }
-    .nav a.link { color: hsl(var(--muted)); text-decoration: none; margin-left: 18px; font-size: 14px; }
-    .nav a.link:hover, .nav a.link:focus { color: hsl(var(--fg)); outline: none; }
+    /* --- Background FX (Interactive Liquid) --- */
+    .ambient-canvas {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: -1;
+      overflow: hidden;
+      background: var(--bg-dark);
+    }
 
-    /* Card */
-    .card { width: min(920px, 92vw); border-radius: 20px; border: 1px solid hsl(var(--stroke)); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06); backdrop-filter: blur(10px) saturate(130%);
-      padding: clamp(28px, 6vw, 48px); text-align: center; }
+    /* High Quality Grain using SVG filter trick */
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      opacity: 0.07;
+      pointer-events: none;
+      filter: contrast(150%) brightness(100%);
+      background: transparent;
+    }
+    
+    /* The blobs move based on CSS variables set by JS */
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.5;
+      transition: transform 0.1s linear; /* slight lag for smooth follow */
+      will-change: transform;
+    }
 
-    .kicker { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; border: 1px solid hsl(var(--stroke)); background: hsl(var(--card-bg)); color: hsl(var(--muted)); font-size: 13px; letter-spacing: .3px; }
-    .kicker .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2))); box-shadow: 0 0 14px rgba(132,94,247,.8); }
+    .blob-1 {
+      top: 10%; left: 20%; width: 40vw; height: 40vw;
+      background: radial-gradient(circle, var(--accent-purple) 0%, transparent 60%);
+      transform: translate(calc(var(--mx) * -40px), calc(var(--my) * -40px));
+    }
+    
+    .blob-2 {
+      bottom: 10%; right: 10%; width: 50vw; height: 50vw;
+      background: radial-gradient(circle, #4c1d95 0%, transparent 60%);
+      transform: translate(calc(var(--mx) * 40px), calc(var(--my) * 40px));
+    }
 
-    .title { margin: 14px 0 8px; font-weight: 800; font-size: clamp(40px, 6.5vw, 80px); line-height: 1.02; letter-spacing: -0.02em; background: linear-gradient(90deg, hsl(var(--fg)) 0%, #c3d6ff 30%, #e6e9ff 60%, hsl(var(--fg)) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 8px 32px rgba(160,178,255,.25)); }
+    .blob-3 {
+      top: 40%; left: 40%; width: 35vw; height: 35vw;
+      background: radial-gradient(circle, #2e1065 0%, transparent 60%);
+      opacity: 0.6;
+      transform: translate(calc(var(--mx) * -80px), calc(var(--my) * -80px));
+    }
 
-    .subtitle { margin: 0 auto; max-width: 60ch; color: hsl(var(--muted)); font-size: clamp(14px, 2.2vw, 16px); line-height: 1.6; }
+    /* --- Navigation --- */
+    .nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 24px 40px;
+      z-index: 10;
+      backdrop-filter: blur(5px);
+    }
 
-    /* Buttons */
-    .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
-    @media (max-width: 640px) { .actions { grid-template-columns: 1fr; } }
+    .brand {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex; align-items: center; gap: 12px;
+      background: linear-gradient(90deg, #fff, var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
 
-    .btn { appearance: none; border: 1px solid hsl(var(--stroke)); background: hsl(var(--btn-bg)); color: hsl(var(--fg)); border-radius: 14px; padding: 14px 18px; font-size: 15px; font-weight: 600; letter-spacing: .2px; cursor: pointer; transition: transform .12s ease, background .2s ease, border-color .2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
-    .btn:hover { background: hsl(var(--btn-bg-hover)); transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn:focus-visible { outline: 2px solid #94b0ff; outline-offset: 2px; }
+    .brand-dot {
+      width: 10px; height: 10px; background: var(--accent-purple);
+      border-radius: 50%;
+      box-shadow: 0 0 15px var(--accent-purple);
+    }
 
-    .btn.primary { background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2))); border-color: transparent; color: white; box-shadow: 0 8px 28px rgba(100, 115, 255, .35); }
-    .btn.primary:hover { filter: brightness(1.05); }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-link {
+      font-size: 0.9rem; color: var(--text-muted);
+      position: relative;
+    }
+    .nav-link:hover { color: var(--text-main); }
+    .nav-link::after {
+      content: ''; position: absolute; bottom: -4px; left: 0; width: 0%; height: 1px;
+      background: var(--accent-purple); transition: 0.3s;
+    }
+    .nav-link:hover::after { width: 100%; }
 
-    .btn.ghost { background: transparent; }
+    /* --- Main Layout --- */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 80px;
+    }
 
-    .btn svg { width: 18px; height: 18px; }
+    /* --- Hero Section --- */
+    .hero {
+      text-align: center;
+      padding: 60px 0 20px;
+      animation: fadeIn 1s ease-out;
+    }
 
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--glass-border);
+      font-size: 0.8rem;
+      color: var(--accent-light);
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-title {
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      line-height: 0.95;
+      font-weight: 700;
+      margin-bottom: 24px;
+      background: radial-gradient(circle at center, #fff 0%, #aaa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 40px rgba(192, 132, 252, 0.1);
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin: 0 auto 48px;
+      line-height: 1.6;
+    }
+
+    /* --- Glass Cards & Grid --- */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+      border: 1px solid var(--glass-border);
+      border-top: 1px solid var(--glass-highlight);
+      border-radius: 24px;
+      padding: 32px;
+      backdrop-filter: blur(var(--glass-blur));
+      transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.4s ease, border-color 0.4s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Inner glow effect on hover (uses card-local mouse vars) */
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), rgba(192, 132, 252, 0.06), transparent 40%);
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+
+    .card:hover::before { opacity: 1; }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(192, 132, 252, 0.3);
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), 0 0 20px rgba(192, 132, 252, 0.1);
+    }
+
+    .card-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      color: var(--accent-purple);
+    }
+    .card-icon svg { width: 24px; height: 24px; }
+
+    .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; color: #fff; }
+    .card-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px; }
+    
+    .btn-link {
+      margin-top: auto;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent-purple);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-link span { transition: transform 0.2s; }
+    .card:hover .btn-link span { transform: translateX(4px); }
+
+    /* --- Creative Tools Section --- */
+    .section-header {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 32px;
+    }
+    .section-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--glass-border), transparent); }
+    .section-title { font-size: 1.5rem; color: var(--accent-light); font-weight: 300; }
+
+    @media (max-width: 768px) {
+      .nav { padding: 20px; }
+      .nav-links { display: none; }
+      .card-grid { grid-template-columns: 1fr; }
+      .section-header { margin-top: 40px; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
     /* Footer */
-    .foot { margin-top: 22px; color: hsl(var(--muted)); font-size: 12px; }
-
-    /* Reduced motion */
-    @media (prefers-reduced-motion: no-preference) {
-      .floaty { animation: float 6s ease-in-out infinite; }
-      @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+    footer {
+      text-align: center;
+      padding: 40px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.2);
+      margin-top: auto;
     }
   </style>
 </head>
 <body>
-  <div class="bg"></div>
-  <div class="grain"></div>
 
-  <header class="nav">
-    <a class="brand" href="#" aria-label="minishakk home">
-      <span class="dot" aria-hidden="true"></span>
-      <span>minishakk</span>
+  <!-- SVG Filter Definition for true noise -->
+  <svg style="display: none;">
+    <filter id="noiseFilter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+      <feColorMatrix type="saturate" values="0" />
+    </filter>
+  </svg>
+
+  <!-- Ambient Background -->
+  <div class="ambient-canvas">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <!-- Using the SVG filter for high fidelity grain -->
+    <div class="noise-overlay" style="filter: url(#noiseFilter); opacity: 0.05;"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="#" class="brand">
+      <div class="brand-dot"></div>
+      <span class="brand-font">minishakk</span>
     </a>
-    <nav>
-      <a class="link" href="https://minishakk.com/ai">miniGPT</a>
-      <a class="link" href="https://minishakk.com/skull-killer">skull killer</a>
-      <a class="link" href="https://minishakk.com/sandbox">sandbox</a>
-    </nav>
-  </header>
+    <div class="nav-links">
+      <a href="https://minishakk.com/ai" class="nav-link">miniGPT</a>
+      <!-- Skull Killer removed -->
+      <a href="https://minishakk.com/sandbox" class="nav-link">PhysicsBox</a>
+    </div>
+  </nav>
 
-  <main class="wrap">
-    <section class="card floaty" role="region" aria-label="Intro">
-      <div class="kicker"><span class="pill-dot" aria-hidden="true"></span> everything online</div>
-      <h1 class="title">minishakk</h1>
-      <p class="subtitle">have fun. do what you want. no accounts, no setup, no clutter, pure privacy.</p>
+  <!-- Main Content -->
+  <main class="container">
+    
+    <!-- Hero -->
+    <section class="hero">
+      <div class="pill">
+        <span style="width: 6px; height: 6px; background: var(--accent-purple); border-radius: 50%;"></span>
+        Everything Online
+      </div>
+      <h1 class="hero-title">Create without<br>clutter.</h1>
+      <p class="hero-sub">
+        Have fun. Do what you want. No accounts, no setup, just pure digital privacy and tools that work instantly.
+      </p>
+    </section>
 
-      <div class="actions" role="group" aria-label="Primary actions">
-        <a class="btn primary" href="https://minishakk.com/ai">
-          <!-- spark icon -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          Use miniGPT
+    <!-- Main Apps Grid -->
+    <div class="card-grid">
+      <!-- miniGPT -->
+      <a href="https://minishakk.com/ai" class="card">
+        <div class="card-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        </div>
+        <div>
+          <h3 class="card-title">miniGPT</h3>
+          <p class="card-desc">Fast, private AI access without the login walls. Ask anything.</p>
+        </div>
+        <div class="btn-link">Launch App <span>→</span></div>
+      </a>
+
+      <!-- PhysicsBox (formerly Sandbox) -->
+      <a href="https://minishakk.com/sandbox" class="card">
+        <div class="card-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+        </div>
+        <div>
+          <h3 class="card-title">PhysicsBox</h3>
+          <p class="card-desc">A powerful 2D physics sandbox. Experiment with gravity, collisions, and forces.</p>
+        </div>
+        <div class="btn-link">Open PhysicsBox <span>→</span></div>
+      </a>
+    </div>
+
+    <!-- Creative Tools Section -->
+    <div>
+      <div class="section-header">
+        <h2 class="section-title">Creative Tools</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+        <!-- PBR Extractor -->
+        <a href="https://minishakk.com/pbr-extractor" class="card">
+          <div class="card-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          </div>
+          <div>
+            <h3 class="card-title">PBR Extractor</h3>
+            <p class="card-desc">Extract physically based rendering textures from images instantly.</p>
+          </div>
+          <div class="btn-link">Start Extracting <span>→</span></div>
         </a>
-        <a class="btn ghost" href="https://minishakk.com/skull-killer">
-          <!-- gamepad icon -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12h12"/><path d="M7 15h2v2H7zM15 15h2v2h-2z"/><path d="M8 12a4 4 0 0 1 8 0"/></svg>
-          Play skull killer
-        </a>
-        <a class="btn ghost" href="https://minishakk.com/sandbox">
-          <!-- blocks icon -->
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/><path d="M3.3 7.3 12 12l8.7-4.7"/></svg>
-          Open sandbox
+
+        <!-- HumToSing -->
+        <a href="https://minishakk.com/humtomidi" class="card">
+          <div class="card-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
+          </div>
+          <div>
+            <h3 class="card-title">HumToMidi</h3>
+            <p class="card-desc">Convert your humming into synthesized melody using MIDI.</p>
+          </div>
+          <div class="btn-link">Create Music <span>→</span></div>
         </a>
       </div>
-      <div class="foot">have fun.</div>
-    </section>
+    </div>
+
   </main>
+
+  <footer>
+    <p>have fun. minishakk © 2024</p>
+  </footer>
+
+  <script>
+    // Mouse tracking for hover glow effect AND background parallax
+    const cards = document.querySelectorAll('.card');
+    const body = document.body;
+    const root = document.documentElement;
+    
+    document.addEventListener('mousemove', e => {
+      const x = e.clientX;
+      const y = e.clientY;
+      
+      // Global normalization for background blobs (-1 to 1 range roughly)
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const normX = (x / w);
+      const normY = (y / h);
+      
+      root.style.setProperty('--mx', normX);
+      root.style.setProperty('--my', normY);
+
+      // Card specific glow
+      cards.forEach(card => {
+        const rect = card.getBoundingClientRect();
+        const cardX = x - rect.left;
+        const cardY = y - rect.top;
+        
+        card.style.setProperty('--mouse-x', `${cardX}px`);
+        card.style.setProperty('--mouse-y', `${cardY}px`);
+      });
+    });
+  </script>
 </body>
 </html>
