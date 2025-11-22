@@ -1,494 +1,563 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Upload, Download, Activity, Layers, Droplet, Sun, Maximize, 
-  Image as ImageIcon, X, RefreshCw, SlidersHorizontal, Save, 
-  Trash2, ChevronRight, RotateCcw 
-} from 'lucide-react';
-
-// --- Constants & Config ---
-const DEFAULT_SETTINGS = {
-  smoothing: 0,     // 0 to 5
-  contrast: 1.0,    // 0.5 to 2.0
-  brightness: 0,    // -100 to 100
-  normalStrength: 1.0, // 0.1 to 5.0
-  roughnessOffset: 0, // -100 to 100
-  opacity: 1.0      // 0.0 to 1.0
-};
-
-const STORAGE_KEY = 'luma_forge_presets';
-
-// --- Helper Functions ---
-
-const downloadCanvas = (canvas, filename) => {
-  if (!canvas) return;
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = canvas.toDataURL();
-  link.click();
-};
-
-const getBrightness = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
-
-const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-
-// --- UI Components ---
-
-const Card = ({ title, icon: Icon, canvasRef, loading }) => (
-  <div className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/50 transition-all duration-500 hover:border-white/30 hover:bg-neutral-900/80">
-    <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luma Forge - Texture Generator</title>
     
-    <div className="relative z-10 flex items-center justify-between border-b border-white/5 p-4 backdrop-blur-sm">
-      <div className="flex items-center gap-3">
-        <Icon className="h-4 w-4 text-white/70" />
-        <h3 className="text-sm font-medium tracking-wide text-white/90">{title}</h3>
-      </div>
-      {!loading && canvasRef.current && (
-        <button 
-          onClick={() => downloadCanvas(canvasRef.current, `${title.replace(' ', '_')}.png`)}
-          className="rounded-full bg-white/5 p-2 text-white/50 transition-colors hover:bg-white hover:text-black"
-          title="Download Map"
-        >
-          <Download className="h-4 w-4" />
-        </button>
-      )}
-    </div>
-
-    <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-black p-4">
-      {loading && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm gap-4 animate-in fade-in duration-300">
-          <div className="h-12 w-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-          <span className="text-xs text-white/40 uppercase tracking-widest">Processing</span>
-        </div>
-      )}
-      
-      <canvas 
-        ref={canvasRef} 
-        className={`h-full w-full object-contain transition-transform duration-700 group-hover:scale-105 ${loading ? 'opacity-0' : 'opacity-100'}`} 
-      />
-      
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-20" 
-           style={{backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '20px 20px'}}>
-      </div>
-    </div>
-  </div>
-);
-
-const Slider = ({ label, value, min, max, step, onChange }) => (
-  <div className="space-y-2">
-    <div className="flex justify-between text-xs font-medium text-neutral-400 uppercase tracking-wider">
-      <span>{label}</span>
-      <span className="text-white">{value}</span>
-    </div>
-    <input 
-      type="range" 
-      min={min} 
-      max={max} 
-      step={step} 
-      value={value} 
-      onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer hover:bg-white/20 transition-colors [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-    />
-  </div>
-);
-
-// --- Main Component ---
-
-export default function TextureGenerator() {
-  const [sourceImage, setSourceImage] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [fileName, setFileName] = useState("texture");
-  
-  // Settings & Sidebar
-  const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [presets, setPresets] = useState({});
-  const [newPresetName, setNewPresetName] = useState("");
-
-  // Refs for canvases
-  const originalRef = useRef(null);
-  const normalRef = useRef(null);
-  const heightRef = useRef(null);
-  const roughnessRef = useRef(null);
-  const aoRef = useRef(null);
-
-  // Load presets on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setPresets(JSON.parse(saved));
-  }, []);
-
-  // Save presets logic
-  const savePreset = () => {
-    if (!newPresetName.trim()) return;
-    const updated = { ...presets, [newPresetName]: settings };
-    setPresets(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setNewPresetName("");
-  };
-
-  const loadPreset = (name) => setSettings(presets[name]);
-  
-  const deletePreset = (name) => {
-    const updated = { ...presets };
-    delete updated[name];
-    setPresets(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  };
-
-  // Handle File Upload
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    setFileName(file.name.split('.')[0]);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => setSourceImage(img);
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  // Process Images
-  useEffect(() => {
-    if (!sourceImage) return;
-    setIsProcessing(true);
-
-    setTimeout(() => {
-      const width = sourceImage.width;
-      const height = sourceImage.height;
-      
-      if (!originalRef.current) {
-        setIsProcessing(false);
-        return;
-      }
-
-      // 1. Draw Original & Get Data
-      const ctxOriginal = originalRef.current.getContext('2d');
-      originalRef.current.width = width;
-      originalRef.current.height = height;
-      
-      // Clear and draw with opacity
-      ctxOriginal.clearRect(0, 0, width, height);
-      ctxOriginal.globalAlpha = settings.opacity;
-      ctxOriginal.drawImage(sourceImage, 0, 0);
-      ctxOriginal.globalAlpha = 1.0; // Reset
-      
-      const imgData = ctxOriginal.getImageData(0, 0, width, height);
-      const data = imgData.data;
-
-      // 2. Create Grayscale Buffer (with brightness/contrast applied)
-      // Using Float32 for better precision during calculations
-      const grayBuffer = new Float32Array(width * height);
-      
-      for (let i = 0; i < data.length; i += 4) {
-        const b = getBrightness(data[i], data[i+1], data[i+2]);
-        // Apply Contrast & Brightness
-        // Formula: new = (old - 128) * contrast + 128 + brightness
-        let val = (b - 128) * settings.contrast + 128 + settings.brightness;
-        grayBuffer[i/4] = clamp(val, 0, 255);
-      }
-
-      // 3. Optional Smoothing (Simple Box Blur)
-      let processedBuffer = grayBuffer;
-      if (settings.smoothing > 0) {
-        const smoothBuffer = new Float32Array(width * height);
-        const radius = Math.floor(settings.smoothing);
-        
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            let sum = 0;
-            let count = 0;
-            
-            // Simple Kernel
-            for (let ky = -radius; ky <= radius; ky++) {
-              for (let kx = -radius; kx <= radius; kx++) {
-                const px = clamp(x + kx, 0, width - 1);
-                const py = clamp(y + ky, 0, height - 1);
-                sum += grayBuffer[py * width + px];
-                count++;
-              }
-            }
-            smoothBuffer[y * width + x] = sum / count;
-          }
+    <!-- Custom Styles for Scrollbar -->
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
         }
-        processedBuffer = smoothBuffer;
-      }
-
-      // 4. Generate Maps
-      const normalData = ctxOriginal.createImageData(width, height);
-      const heightData = ctxOriginal.createImageData(width, height);
-      const roughnessData = ctxOriginal.createImageData(width, height);
-      const aoData = ctxOriginal.createImageData(width, height);
-
-      const alphaValue = Math.floor(255 * settings.opacity);
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const i = (y * width + x) * 4;
-          const val = processedBuffer[y * width + x];
-
-          // --- Height Map ---
-          heightData.data[i] = val;
-          heightData.data[i+1] = val;
-          heightData.data[i+2] = val;
-          heightData.data[i+3] = alphaValue;
-
-          // --- Roughness Map ---
-          // Base inversion + Offset
-          let rough = (255 - val) + settings.roughnessOffset;
-          rough = clamp(rough, 0, 255);
-          roughnessData.data[i] = rough;
-          roughnessData.data[i+1] = rough;
-          roughnessData.data[i+2] = rough;
-          roughnessData.data[i+3] = alphaValue;
-
-          // --- AO Map ---
-          let ao = clamp(val + 30, 0, 255); 
-          aoData.data[i] = ao;
-          aoData.data[i+1] = ao;
-          aoData.data[i+2] = ao;
-          aoData.data[i+3] = alphaValue;
-
-          // --- Normal Map ---
-          // Sobel-ish
-          const px_l = clamp(x - 1, 0, width - 1);
-          const px_r = clamp(x + 1, 0, width - 1);
-          const py_u = clamp(y - 1, 0, height - 1);
-          const py_d = clamp(y + 1, 0, height - 1);
-
-          const left = processedBuffer[y * width + px_l];
-          const right = processedBuffer[y * width + px_r];
-          const up = processedBuffer[py_u * width + x];
-          const down = processedBuffer[py_d * width + x];
-
-          const dX = (left - right) * settings.normalStrength;
-          const dY = (up - down) * settings.normalStrength;
-          const dZ = 255.0 / 2.0; 
-
-          const len = Math.sqrt(dX*dX + dY*dY + dZ*dZ);
-          
-          normalData.data[i] = ((dX/len) * 0.5 + 0.5) * 255;
-          normalData.data[i+1] = ((dY/len) * 0.5 + 0.5) * 255;
-          normalData.data[i+2] = ((dZ/len) * 0.5 + 0.5) * 255;
-          normalData.data[i+3] = alphaValue;
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
         }
-      }
-
-      // Render
-      [
-        { ref: normalRef, d: normalData },
-        { ref: heightRef, d: heightData },
-        { ref: roughnessRef, d: roughnessData },
-        { ref: aoRef, d: aoData }
-      ].forEach(item => {
-        if (item.ref.current) {
-          item.ref.current.width = width;
-          item.ref.current.height = height;
-          item.ref.current.getContext('2d').putImageData(item.d, 0, 0);
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
         }
-      });
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-      setIsProcessing(false);
-    }, 50); // Short timeout to let UI render loading state
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
 
-  }, [sourceImage, settings]);
-
-  const clearAll = () => {
-    setSourceImage(null);
-    setFileName("texture");
-    setSettings(DEFAULT_SETTINGS);
-    setShowSettings(false);
-  };
-
-  return (
-    <div className="min-h-screen w-full bg-black text-white selection:bg-white selection:text-black font-sans overflow-x-hidden">
-      
-      {/* --- Controls Overlay --- */}
-      <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
-        {sourceImage && (
-          <>
-            <button 
-              onClick={() => setShowSettings(!showSettings)}
-              className={`p-3 rounded-full border backdrop-blur-md transition-all shadow-xl ${showSettings ? 'bg-white text-black border-white' : 'bg-black/40 border-white/10 text-white hover:border-white/50 hover:bg-black/60'}`}
-              title="Adjustments"
+        // --- Icons (Embedded for Standalone) ---
+        const IconBase = ({ children, className, ...props }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className} 
+                {...props}
             >
-              <SlidersHorizontal className="h-5 w-5" />
-            </button>
+                {children}
+            </svg>
+        );
 
-            <button 
-              onClick={clearAll}
-              className="p-3 rounded-full bg-black/40 border border-white/10 text-white hover:bg-white hover:text-black hover:border-white transition-all backdrop-blur-md shadow-xl"
-              title="Start Over"
-            >
-              <RefreshCw className="h-5 w-5" />
-            </button>
-          </>
-        )}
-      </div>
+        const Upload = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></IconBase>;
+        const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>;
+        const Activity = (props) => <IconBase {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase>;
+        const Layers = (props) => <IconBase {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconBase>;
+        const Droplet = (props) => <IconBase {...props}><path d="M12 22a7 7 0 0 0 7-7c0-2-2-3.9-7-10.5C7 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></IconBase>;
+        const Sun = (props) => <IconBase {...props}><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></IconBase>;
+        const Maximize = (props) => <IconBase {...props}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconBase>;
+        const ImageIcon = (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></IconBase>;
+        const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
+        const RefreshCw = (props) => <IconBase {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>;
+        const SlidersHorizontal = (props) => <IconBase {...props}><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></IconBase>;
+        const Save = (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>;
+        const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
+        const ChevronRight = (props) => <IconBase {...props}><path d="m9 18 6-6-6-6"/></IconBase>;
+        const RotateCcw = (props) => <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>;
 
-      {/* --- Side Panel --- */}
-      <div className={`fixed top-0 right-0 h-full w-80 bg-neutral-900/95 backdrop-blur-xl border-l border-white/10 z-40 transform transition-transform duration-500 ease-out p-6 overflow-y-auto ${showSettings ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="mt-20 space-y-8">
-          
-          <div>
-            <div className="flex items-center justify-between mb-1">
-                <h3 className="text-lg font-bold">Adjustments</h3>
-                <button 
-                  onClick={() => setSettings(DEFAULT_SETTINGS)}
-                  className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                  title="Reset All Settings"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </button>
+        // --- Constants & Config ---
+        const DEFAULT_SETTINGS = {
+            smoothing: 0,
+            contrast: 1.0,
+            brightness: 0,
+            normalStrength: 1.0,
+            roughnessOffset: 0,
+            opacity: 1.0
+        };
+
+        const STORAGE_KEY = 'luma_forge_presets';
+
+        // --- Helper Functions ---
+        const downloadCanvas = (canvas, filename) => {
+            if (!canvas) return;
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+        };
+
+        const getBrightness = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+        const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+        // --- UI Components ---
+        const Card = ({ title, icon: Icon, canvasRef, loading }) => (
+            <div className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/50 transition-all duration-500 hover:border-white/30 hover:bg-neutral-900/80">
+                <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                
+                <div className="relative z-10 flex items-center justify-between border-b border-white/5 p-4 backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                        <Icon className="h-4 w-4 text-white/70" />
+                        <h3 className="text-sm font-medium tracking-wide text-white/90">{title}</h3>
+                    </div>
+                    {!loading && canvasRef.current && (
+                        <button 
+                            onClick={() => downloadCanvas(canvasRef.current, `${title.replace(' ', '_')}.png`)}
+                            className="rounded-full bg-white/5 p-2 text-white/50 transition-colors hover:bg-white hover:text-black"
+                            title="Download Map"
+                        >
+                            <Download className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-black p-4">
+                    {loading && (
+                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm gap-4 animate-in fade-in duration-300">
+                            <div className="h-12 w-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                            <span className="text-xs text-white/40 uppercase tracking-widest">Processing</span>
+                        </div>
+                    )}
+                    
+                    <canvas 
+                        ref={canvasRef} 
+                        className={`h-full w-full object-contain transition-transform duration-700 group-hover:scale-105 ${loading ? 'opacity-0' : 'opacity-100'}`} 
+                    />
+                    
+                    <div className="pointer-events-none absolute inset-0 -z-10 opacity-20" 
+                         style={{backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '20px 20px'}}>
+                    </div>
+                </div>
             </div>
-            <p className="text-xs text-neutral-500 mb-6">Global modifiers for map generation.</p>
+        );
+
+        const Slider = ({ label, value, min, max, step, onChange }) => (
+            <div className="space-y-2">
+                <div className="flex justify-between text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                    <span>{label}</span>
+                    <span className="text-white">{value}</span>
+                </div>
+                <input 
+                    type="range" 
+                    min={min} 
+                    max={max} 
+                    step={step} 
+                    value={value} 
+                    onChange={(e) => onChange(parseFloat(e.target.value))}
+                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer hover:bg-white/20 transition-colors [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                />
+            </div>
+        );
+
+        // --- Main Component ---
+        function TextureGenerator() {
+            const [sourceImage, setSourceImage] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [fileName, setFileName] = useState("texture");
             
-            <div className="space-y-6">
-              <Slider 
-                label="Opacity" 
-                value={settings.opacity} 
-                min={0} max={1} step={0.05} 
-                onChange={(v) => setSettings(s => ({...s, opacity: v}))} 
-              />
-              <div className="h-px bg-white/10 my-6" />
-              <Slider 
-                label="Smoothing (Blur)" 
-                value={settings.smoothing} 
-                min={0} max={5} step={1} 
-                onChange={(v) => setSettings(s => ({...s, smoothing: v}))} 
-              />
-              <Slider 
-                label="Contrast" 
-                value={settings.contrast} 
-                min={0.5} max={2.0} step={0.1} 
-                onChange={(v) => setSettings(s => ({...s, contrast: v}))} 
-              />
-              <Slider 
-                label="Brightness" 
-                value={settings.brightness} 
-                min={-100} max={100} step={5} 
-                onChange={(v) => setSettings(s => ({...s, brightness: v}))} 
-              />
-              <div className="h-px bg-white/10 my-6" />
-              <Slider 
-                label="Normal Strength" 
-                value={settings.normalStrength} 
-                min={0.1} max={5.0} step={0.1} 
-                onChange={(v) => setSettings(s => ({...s, normalStrength: v}))} 
-              />
-              <Slider 
-                label="Roughness Offset" 
-                value={settings.roughnessOffset} 
-                min={-100} max={100} step={5} 
-                onChange={(v) => setSettings(s => ({...s, roughnessOffset: v}))} 
-              />
-            </div>
-          </div>
+            // Settings & Sidebar
+            const [showSettings, setShowSettings] = useState(false);
+            const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+            const [presets, setPresets] = useState({});
+            const [newPresetName, setNewPresetName] = useState("");
 
-          <div>
-            <h3 className="text-lg font-bold mb-4">Presets</h3>
-            <div className="flex gap-2 mb-4">
-              <input 
-                type="text" 
-                value={newPresetName}
-                onChange={(e) => setNewPresetName(e.target.value)}
-                placeholder="New preset name..."
-                className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-white/50"
-              />
-              <button 
-                onClick={savePreset}
-                disabled={!newPresetName}
-                className="p-2 rounded-lg bg-white text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-200"
-              >
-                <Save className="h-4 w-4" />
-              </button>
-            </div>
+            // Refs for canvases
+            const originalRef = useRef(null);
+            const normalRef = useRef(null);
+            const heightRef = useRef(null);
+            const roughnessRef = useRef(null);
+            const aoRef = useRef(null);
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-              {Object.keys(presets).length === 0 && (
-                <div className="text-xs text-neutral-600 italic">No saved presets</div>
-              )}
-              {Object.entries(presets).map(([name, presetSettings]) => (
-                <div key={name} className="flex items-center justify-between bg-white/5 rounded-lg p-3 group">
-                  <span className="text-sm font-medium">{name}</span>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => loadPreset(name)}
-                      className="text-white/50 hover:text-white" 
-                      title="Load"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <button 
-                      onClick={() => deletePreset(name)}
-                      className="text-white/50 hover:text-red-400"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+            // Load presets on mount
+            useEffect(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) setPresets(JSON.parse(saved));
+            }, []);
+
+            // Save presets logic
+            const savePreset = () => {
+                if (!newPresetName.trim()) return;
+                const updated = { ...presets, [newPresetName]: settings };
+                setPresets(updated);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+                setNewPresetName("");
+            };
+
+            const loadPreset = (name) => setSettings(presets[name]);
+            
+            const deletePreset = (name) => {
+                const updated = { ...presets };
+                delete updated[name];
+                setPresets(updated);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            };
+
+            // Handle File Upload
+            const handleImageUpload = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                
+                setFileName(file.name.split('.')[0]);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => setSourceImage(img);
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+
+            // Process Images
+            useEffect(() => {
+                if (!sourceImage) return;
+                setIsProcessing(true);
+
+                setTimeout(() => {
+                    const width = sourceImage.width;
+                    const height = sourceImage.height;
+                    
+                    if (!originalRef.current) {
+                        setIsProcessing(false);
+                        return;
+                    }
+
+                    // 1. Draw Original & Get Data
+                    const ctxOriginal = originalRef.current.getContext('2d');
+                    originalRef.current.width = width;
+                    originalRef.current.height = height;
+                    
+                    // Clear and draw with opacity
+                    ctxOriginal.clearRect(0, 0, width, height);
+                    ctxOriginal.globalAlpha = settings.opacity;
+                    ctxOriginal.drawImage(sourceImage, 0, 0);
+                    ctxOriginal.globalAlpha = 1.0; // Reset
+                    
+                    const imgData = ctxOriginal.getImageData(0, 0, width, height);
+                    const data = imgData.data;
+
+                    // 2. Create Grayscale Buffer (with brightness/contrast applied)
+                    const grayBuffer = new Float32Array(width * height);
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        const b = getBrightness(data[i], data[i+1], data[i+2]);
+                        // Apply Contrast & Brightness
+                        let val = (b - 128) * settings.contrast + 128 + settings.brightness;
+                        grayBuffer[i/4] = clamp(val, 0, 255);
+                    }
+
+                    // 3. Optional Smoothing (Simple Box Blur)
+                    let processedBuffer = grayBuffer;
+                    if (settings.smoothing > 0) {
+                        const smoothBuffer = new Float32Array(width * height);
+                        const radius = Math.floor(settings.smoothing);
+                        
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                let sum = 0;
+                                let count = 0;
+                                
+                                // Simple Kernel
+                                for (let ky = -radius; ky <= radius; ky++) {
+                                    for (let kx = -radius; kx <= radius; kx++) {
+                                        const px = clamp(x + kx, 0, width - 1);
+                                        const py = clamp(y + ky, 0, height - 1);
+                                        sum += grayBuffer[py * width + px];
+                                        count++;
+                                    }
+                                }
+                                smoothBuffer[y * width + x] = sum / count;
+                            }
+                        }
+                        processedBuffer = smoothBuffer;
+                    }
+
+                    // 4. Generate Maps
+                    const normalData = ctxOriginal.createImageData(width, height);
+                    const heightData = ctxOriginal.createImageData(width, height);
+                    const roughnessData = ctxOriginal.createImageData(width, height);
+                    const aoData = ctxOriginal.createImageData(width, height);
+
+                    const alphaValue = Math.floor(255 * settings.opacity);
+
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const i = (y * width + x) * 4;
+                            const val = processedBuffer[y * width + x];
+
+                            // --- Height Map ---
+                            heightData.data[i] = val;
+                            heightData.data[i+1] = val;
+                            heightData.data[i+2] = val;
+                            heightData.data[i+3] = alphaValue;
+
+                            // --- Roughness Map ---
+                            let rough = (255 - val) + settings.roughnessOffset;
+                            rough = clamp(rough, 0, 255);
+                            roughnessData.data[i] = rough;
+                            roughnessData.data[i+1] = rough;
+                            roughnessData.data[i+2] = rough;
+                            roughnessData.data[i+3] = alphaValue;
+
+                            // --- AO Map ---
+                            let ao = clamp(val + 30, 0, 255); 
+                            aoData.data[i] = ao;
+                            aoData.data[i+1] = ao;
+                            aoData.data[i+2] = ao;
+                            aoData.data[i+3] = alphaValue;
+
+                            // --- Normal Map ---
+                            const px_l = clamp(x - 1, 0, width - 1);
+                            const px_r = clamp(x + 1, 0, width - 1);
+                            const py_u = clamp(y - 1, 0, height - 1);
+                            const py_d = clamp(y + 1, 0, height - 1);
+
+                            const left = processedBuffer[y * width + px_l];
+                            const right = processedBuffer[y * width + px_r];
+                            const up = processedBuffer[py_u * width + x];
+                            const down = processedBuffer[py_d * width + x];
+
+                            const dX = (left - right) * settings.normalStrength;
+                            const dY = (up - down) * settings.normalStrength;
+                            const dZ = 255.0 / 2.0; 
+
+                            const len = Math.sqrt(dX*dX + dY*dY + dZ*dZ);
+                            
+                            normalData.data[i] = ((dX/len) * 0.5 + 0.5) * 255;
+                            normalData.data[i+1] = ((dY/len) * 0.5 + 0.5) * 255;
+                            normalData.data[i+2] = ((dZ/len) * 0.5 + 0.5) * 255;
+                            normalData.data[i+3] = alphaValue;
+                        }
+                    }
+
+                    // Render
+                    [
+                        { ref: normalRef, d: normalData },
+                        { ref: heightRef, d: heightData },
+                        { ref: roughnessRef, d: roughnessData },
+                        { ref: aoRef, d: aoData }
+                    ].forEach(item => {
+                        if (item.ref.current) {
+                            item.ref.current.width = width;
+                            item.ref.current.height = height;
+                            item.ref.current.getContext('2d').putImageData(item.d, 0, 0);
+                        }
+                    });
+
+                    setIsProcessing(false);
+                }, 50); 
+
+            }, [sourceImage, settings]);
+
+            const clearAll = () => {
+                setSourceImage(null);
+                setFileName("texture");
+                setSettings(DEFAULT_SETTINGS);
+                setShowSettings(false);
+            };
+
+            return (
+                <div className="min-h-screen w-full bg-black text-white selection:bg-white selection:text-black font-sans overflow-x-hidden">
+                    
+                    {/* --- Controls Overlay --- */}
+                    <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
+                        {sourceImage && (
+                        <>
+                            <button 
+                                onClick={() => setShowSettings(!showSettings)}
+                                className={`p-3 rounded-full border backdrop-blur-md transition-all shadow-xl ${showSettings ? 'bg-white text-black border-white' : 'bg-black/40 border-white/10 text-white hover:border-white/50 hover:bg-black/60'}`}
+                                title="Adjustments"
+                            >
+                                <SlidersHorizontal className="h-5 w-5" />
+                            </button>
+
+                            <button 
+                                onClick={clearAll}
+                                className="p-3 rounded-full bg-black/40 border border-white/10 text-white hover:bg-white hover:text-black hover:border-white transition-all backdrop-blur-md shadow-xl"
+                                title="Start Over"
+                            >
+                                <RefreshCw className="h-5 w-5" />
+                            </button>
+                        </>
+                        )}
+                    </div>
+
+                    {/* --- Side Panel --- */}
+                    <div className={`fixed top-0 right-0 h-full w-80 bg-neutral-900/95 backdrop-blur-xl border-l border-white/10 z-40 transform transition-transform duration-500 ease-out p-6 overflow-y-auto ${showSettings ? 'translate-x-0' : 'translate-x-full'}`}>
+                        <div className="mt-20 space-y-8">
+                        
+                        <div>
+                            <div className="flex items-center justify-between mb-1">
+                                <h3 className="text-lg font-bold">Adjustments</h3>
+                                <button 
+                                    onClick={() => setSettings(DEFAULT_SETTINGS)}
+                                    className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                                    title="Reset All Settings"
+                                >
+                                    <RotateCcw className="h-4 w-4" />
+                                </button>
+                            </div>
+                            <p className="text-xs text-neutral-500 mb-6">Global modifiers for map generation.</p>
+                            
+                            <div className="space-y-6">
+                                <Slider 
+                                    label="Opacity" 
+                                    value={settings.opacity} 
+                                    min={0} max={1} step={0.05} 
+                                    onChange={(v) => setSettings(s => ({...s, opacity: v}))} 
+                                />
+                                <div className="h-px bg-white/10 my-6" />
+                                <Slider 
+                                    label="Smoothing (Blur)" 
+                                    value={settings.smoothing} 
+                                    min={0} max={5} step={1} 
+                                    onChange={(v) => setSettings(s => ({...s, smoothing: v}))} 
+                                />
+                                <Slider 
+                                    label="Contrast" 
+                                    value={settings.contrast} 
+                                    min={0.5} max={2.0} step={0.1} 
+                                    onChange={(v) => setSettings(s => ({...s, contrast: v}))} 
+                                />
+                                <Slider 
+                                    label="Brightness" 
+                                    value={settings.brightness} 
+                                    min={-100} max={100} step={5} 
+                                    onChange={(v) => setSettings(s => ({...s, brightness: v}))} 
+                                />
+                                <div className="h-px bg-white/10 my-6" />
+                                <Slider 
+                                    label="Normal Strength" 
+                                    value={settings.normalStrength} 
+                                    min={0.1} max={5.0} step={0.1} 
+                                    onChange={(v) => setSettings(s => ({...s, normalStrength: v}))} 
+                                />
+                                <Slider 
+                                    label="Roughness Offset" 
+                                    value={settings.roughnessOffset} 
+                                    min={-100} max={100} step={5} 
+                                    onChange={(v) => setSettings(s => ({...s, roughnessOffset: v}))} 
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-lg font-bold mb-4">Presets</h3>
+                            <div className="flex gap-2 mb-4">
+                                <input 
+                                    type="text" 
+                                    value={newPresetName}
+                                    onChange={(e) => setNewPresetName(e.target.value)}
+                                    placeholder="New preset name..."
+                                    className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-white/50"
+                                />
+                                <button 
+                                    onClick={savePreset}
+                                    disabled={!newPresetName}
+                                    className="p-2 rounded-lg bg-white text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-200"
+                                >
+                                    <Save className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                {Object.keys(presets).length === 0 && (
+                                    <div className="text-xs text-neutral-600 italic">No saved presets</div>
+                                )}
+                                {Object.entries(presets).map(([name, presetSettings]) => (
+                                    <div key={name} className="flex items-center justify-between bg-white/5 rounded-lg p-3 group">
+                                        <span className="text-sm font-medium">{name}</span>
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => loadPreset(name)}
+                                                className="text-white/50 hover:text-white" 
+                                                title="Load"
+                                            >
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => deletePreset(name)}
+                                                className="text-white/50 hover:text-red-400"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        </div>
+                    </div>
+
+                    <main className="pt-20 pb-20 px-6 max-w-7xl mx-auto">
+                        
+                        {/* --- Hero / Input Section --- */}
+                        <div className={`flex flex-col items-center justify-center text-center transition-all duration-700 ${sourceImage ? 'mb-10' : 'min-h-[80vh]'}`}>
+                        {!sourceImage ? (
+                            <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                                <div className="h-16 w-16 bg-white rounded-full mx-auto mb-8 flex items-center justify-center">
+                                    <Layers className="h-8 w-8 text-black" />
+                                </div>
+                                <h2 className="text-5xl sm:text-6xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">
+                                    Extract PBR Maps Instantly
+                                </h2>
+                                <p className="text-lg text-neutral-400 mb-10 max-w-lg mx-auto leading-relaxed">
+                                    Drop an image to extract PBR maps (normal, ao, diffuse, roughness, displacement) from your textures.
+                                </p>
+                                
+                                <label className="group relative flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 transition-all hover:border-white hover:bg-white/10">
+                                    <div className="flex flex-col items-center gap-4 transition-transform duration-300 group-hover:-translate-y-2">
+                                        <div className="rounded-full bg-white/10 p-4 backdrop-blur-md transition-all group-hover:bg-white group-hover:text-black">
+                                            <Upload className="h-6 w-6" />
+                                        </div>
+                                        <div className="text-sm font-medium tracking-wider text-neutral-300">UPLOAD TEXTURE</div>
+                                    </div>
+                                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                </label>
+                            </div>
+                        ) : (
+                            <div className="w-full text-left animate-in fade-in duration-500 mb-8">
+                                <h2 className="text-2xl font-bold text-white">{fileName}</h2>
+                            </div>
+                        )}
+                        </div>
+
+                        {/* --- Output Grid --- */}
+                        <div className={`grid gap-8 transition-all duration-1000 ${sourceImage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 grayscale hidden'}`}>
+                        
+                        {/* Row 1 */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <Card title="Original Diffuse" icon={ImageIcon} canvasRef={originalRef} loading={isProcessing} />
+                            <Card title="Normal Map" icon={Activity} canvasRef={normalRef} loading={isProcessing} />
+                            <Card title="Displacement Height" icon={Maximize} canvasRef={heightRef} loading={isProcessing} />
+                        </div>
+
+                        {/* Row 2 */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <Card title="Roughness / Specular" icon={Droplet} canvasRef={roughnessRef} loading={isProcessing} />
+                            <Card title="Ambient Occlusion" icon={Sun} canvasRef={aoRef} loading={isProcessing} />
+                        </div>
+
+                        </div>
+
+                    </main>
                 </div>
-              ))}
-            </div>
-          </div>
+            );
+        }
 
-        </div>
-      </div>
-
-      <main className="pt-20 pb-20 px-6 max-w-7xl mx-auto">
-        
-        {/* --- Hero / Input Section --- */}
-        <div className={`flex flex-col items-center justify-center text-center transition-all duration-700 ${sourceImage ? 'mb-10' : 'min-h-[80vh]'}`}>
-          {!sourceImage ? (
-            <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
-              <div className="h-16 w-16 bg-white rounded-full mx-auto mb-8 flex items-center justify-center">
-                <Layers className="h-8 w-8 text-black" />
-              </div>
-              <h2 className="text-5xl sm:text-6xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">
-                Extract PBR Maps Instantly
-              </h2>
-              <p className="text-lg text-neutral-400 mb-10 max-w-lg mx-auto leading-relaxed">
-                Drop an image to extract PBR maps (normal, ao, diffuse, roughness, displacement) from your textures.
-              </p>
-              
-              <label className="group relative flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 transition-all hover:border-white hover:bg-white/10">
-                <div className="flex flex-col items-center gap-4 transition-transform duration-300 group-hover:-translate-y-2">
-                  <div className="rounded-full bg-white/10 p-4 backdrop-blur-md transition-all group-hover:bg-white group-hover:text-black">
-                    <Upload className="h-6 w-6" />
-                  </div>
-                  <div className="text-sm font-medium tracking-wider text-neutral-300">UPLOAD TEXTURE</div>
-                </div>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-              </label>
-            </div>
-          ) : (
-             <div className="w-full text-left animate-in fade-in duration-500 mb-8">
-               <h2 className="text-2xl font-bold text-white">{fileName}</h2>
-             </div>
-          )}
-        </div>
-
-        {/* --- Output Grid --- */}
-        <div className={`grid gap-8 transition-all duration-1000 ${sourceImage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 grayscale hidden'}`}>
-          
-          {/* Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <Card title="Original Diffuse" icon={ImageIcon} canvasRef={originalRef} loading={isProcessing} />
-            <Card title="Normal Map" icon={Activity} canvasRef={normalRef} loading={isProcessing} />
-            <Card title="Displacement Height" icon={Maximize} canvasRef={heightRef} loading={isProcessing} />
-          </div>
-
-          {/* Row 2 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-             <Card title="Roughness / Specular" icon={Droplet} canvasRef={roughnessRef} loading={isProcessing} />
-             <Card title="Ambient Occlusion" icon={Sun} canvasRef={aoRef} loading={isProcessing} />
-          </div>
-
-        </div>
-
-      </main>
-    </div>
-  );
-}
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<TextureGenerator />);
+    </script>
+</body>
+</html>
