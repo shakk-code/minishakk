@@ -15,11 +15,12 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Custom Styles for Scrollbar -->
+    <!-- Custom Styles for Scrollbar & Animation -->
     <style>
         body {
             background-color: #000;
             color: #fff;
+            overflow-x: hidden;
         }
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
@@ -34,6 +35,10 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.4);
         }
+        /* Hide scrollbar for fullscreen modal */
+        .no-scroll {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -42,7 +47,7 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
 
-        // --- Icons (Embedded for Standalone) ---
+        // --- Icons ---
         const IconBase = ({ children, className, ...props }) => (
             <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -74,7 +79,9 @@
         const Save = (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>;
         const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
         const ChevronRight = (props) => <IconBase {...props}><path d="m9 18 6-6-6-6"/></IconBase>;
+        const ChevronLeft = (props) => <IconBase {...props}><path d="m15 18-6-6 6-6"/></IconBase>;
         const RotateCcw = (props) => <IconBase {...props}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>;
+        const Fullscreen = (props) => <IconBase {...props}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconBase>;
 
         // --- Constants & Config ---
         const DEFAULT_SETTINGS = {
@@ -101,7 +108,8 @@
         const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
         // --- UI Components ---
-        const Card = ({ title, icon: Icon, canvasRef, loading }) => (
+
+        const Card = ({ title, icon: Icon, canvasRef, loading, onPreview }) => (
             <div className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-neutral-900/50 transition-all duration-500 hover:border-white/30 hover:bg-neutral-900/80">
                 <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                 
@@ -112,8 +120,11 @@
                     </div>
                     {!loading && canvasRef.current && (
                         <button 
-                            onClick={() => downloadCanvas(canvasRef.current, `${title.replace(' ', '_')}.png`)}
-                            className="rounded-full bg-white/5 p-2 text-white/50 transition-colors hover:bg-white hover:text-black"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                downloadCanvas(canvasRef.current, `${title.replace(' ', '_')}.png`);
+                            }}
+                            className="rounded-full bg-white/5 p-2 text-white/50 transition-colors hover:bg-white hover:text-black z-20"
                             title="Download Map"
                         >
                             <Download className="h-4 w-4" />
@@ -121,7 +132,10 @@
                     )}
                 </div>
 
-                <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-black p-4">
+                <div 
+                    onClick={onPreview}
+                    className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-black p-4 cursor-pointer"
+                >
                     {loading && (
                         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm gap-4 animate-in fade-in duration-300">
                             <div className="h-12 w-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
@@ -133,6 +147,15 @@
                         ref={canvasRef} 
                         className={`h-full w-full object-contain transition-transform duration-700 group-hover:scale-105 ${loading ? 'opacity-0' : 'opacity-100'}`} 
                     />
+                    
+                    {/* View overlay */}
+                    {!loading && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-black/20 backdrop-blur-[2px]">
+                            <div className="bg-white/10 backdrop-blur-md p-3 rounded-full text-white">
+                                <Maximize className="h-6 w-6" />
+                            </div>
+                        </div>
+                    )}
                     
                     <div className="pointer-events-none absolute inset-0 -z-10 opacity-20" 
                          style={{backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '20px 20px'}}>
@@ -159,11 +182,130 @@
             </div>
         );
 
+        const FullscreenModal = ({ maps, currentIndex, onClose, onNavigate }) => {
+            const [imgSrc, setImgSrc] = useState(null);
+            const currentMap = maps[currentIndex];
+
+            useEffect(() => {
+                if (currentMap.ref.current) {
+                    setImgSrc(currentMap.ref.current.toDataURL());
+                }
+            }, [currentIndex, maps]);
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') onClose();
+                    if (e.key === 'ArrowRight') onNavigate(1);
+                    if (e.key === 'ArrowLeft') onNavigate(-1);
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [onClose, onNavigate]);
+
+            if (!currentMap) return null;
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-in fade-in duration-200">
+                    <button 
+                        onClick={onClose}
+                        className="absolute top-6 right-6 p-3 rounded-full bg-white/10 text-white hover:bg-white hover:text-black transition-all z-50"
+                    >
+                        <X className="h-6 w-6" />
+                    </button>
+
+                    <div className="absolute top-6 left-6 text-white z-50">
+                        <h2 className="text-2xl font-bold tracking-tight">{currentMap.title}</h2>
+                        <p className="text-neutral-500 text-sm uppercase tracking-wider">
+                            Map {currentIndex + 1} of {maps.length}
+                        </p>
+                    </div>
+
+                    {/* Navigation Left */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onNavigate(-1); }}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/50 text-white/50 hover:text-white hover:bg-white/10 transition-all z-50"
+                    >
+                        <ChevronLeft className="h-8 w-8" />
+                    </button>
+
+                    {/* Main Image */}
+                    <div className="relative h-[85vh] w-[85vh] flex items-center justify-center p-4">
+                        {imgSrc && (
+                            <img 
+                                src={imgSrc} 
+                                alt={currentMap.title}
+                                className="max-h-full max-w-full object-contain shadow-2xl rounded-lg border border-white/10"
+                            />
+                        )}
+                        {/* Checkerboard background for transparency */}
+                        <div className="absolute inset-4 -z-10 opacity-20 rounded-lg overflow-hidden" 
+                             style={{backgroundImage: 'radial-gradient(circle, #555 1px, transparent 1px)', backgroundSize: '30px 30px'}}>
+                        </div>
+                    </div>
+
+                     {/* Navigation Right */}
+                     <button 
+                        onClick={(e) => { e.stopPropagation(); onNavigate(1); }}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/50 text-white/50 hover:text-white hover:bg-white/10 transition-all z-50"
+                    >
+                        <ChevronRight className="h-8 w-8" />
+                    </button>
+                </div>
+            );
+        };
+
+        const InteractiveBackground = ({ active }) => {
+            const blob1Ref = useRef(null);
+            const blob2Ref = useRef(null);
+
+            useEffect(() => {
+                if (!active) return;
+
+                const handleMove = (e) => {
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    
+                    // Subtle lag effect using animate API
+                    if (blob1Ref.current) {
+                        blob1Ref.current.animate({
+                            transform: `translate(${x}px, ${y}px)`
+                        }, { duration: 4000, fill: "forwards" });
+                    }
+                    
+                    if (blob2Ref.current) {
+                         blob2Ref.current.animate({
+                            transform: `translate(${window.innerWidth - x}px, ${window.innerHeight - y}px)`
+                        }, { duration: 5000, fill: "forwards" });
+                    }
+                };
+
+                window.addEventListener('mousemove', handleMove);
+                return () => window.removeEventListener('mousemove', handleMove);
+            }, [active]);
+
+            if (!active) return null;
+
+            return (
+                <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+                     <div 
+                        ref={blob1Ref}
+                        className="absolute -top-20 -left-20 w-[500px] h-[500px] rounded-full bg-white/5 blur-[120px] transition-opacity duration-1000"
+                    />
+                    <div 
+                        ref={blob2Ref}
+                        className="absolute -bottom-20 -right-20 w-[400px] h-[400px] rounded-full bg-neutral-800/30 blur-[100px] transition-opacity duration-1000"
+                    />
+                </div>
+            );
+        };
+
         // --- Main Component ---
         function TextureGenerator() {
             const [sourceImage, setSourceImage] = useState(null);
             const [isProcessing, setIsProcessing] = useState(false);
             const [fileName, setFileName] = useState("texture");
+            const [isDragOver, setIsDragOver] = useState(false);
+            const [fullscreenIndex, setFullscreenIndex] = useState(null); // Index of map currently viewed
             
             // Settings & Sidebar
             const [showSettings, setShowSettings] = useState(false);
@@ -177,6 +319,15 @@
             const heightRef = useRef(null);
             const roughnessRef = useRef(null);
             const aoRef = useRef(null);
+
+            // Map Configuration for iteration
+            const mapConfig = [
+                { id: 'diffuse', title: 'Original Diffuse', ref: originalRef, icon: ImageIcon },
+                { id: 'normal', title: 'Normal Map', ref: normalRef, icon: Activity },
+                { id: 'height', title: 'Displacement Height', ref: heightRef, icon: Maximize },
+                { id: 'roughness', title: 'Roughness / Specular', ref: roughnessRef, icon: Droplet },
+                { id: 'ao', title: 'Ambient Occlusion', ref: aoRef, icon: Sun }
+            ];
 
             // Load presets on mount
             useEffect(() => {
@@ -202,10 +353,9 @@
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
             };
 
-            // Handle File Upload
-            const handleImageUpload = (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
+            // Handle File Logic
+            const processFile = (file) => {
+                if (!file || !file.type.startsWith('image/')) return;
                 
                 setFileName(file.name.split('.')[0]);
                 const reader = new FileReader();
@@ -215,6 +365,39 @@
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
+            };
+
+            const handleImageUpload = (e) => {
+                processFile(e.target.files?.[0]);
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                
+                // Handle dropped files
+                if (e.dataTransfer.items) {
+                    // Use DataTransferItemList interface to access the file(s)
+                    [...e.dataTransfer.items].forEach((item, i) => {
+                        if (item.kind === 'file') {
+                            const file = item.getAsFile();
+                            processFile(file);
+                        }
+                    });
+                } else {
+                    // Use DataTransfer interface to access the file(s)
+                    processFile(e.dataTransfer.files[0]);
+                }
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+            };
+
+            const handleDragLeave = (e) => {
+                e.preventDefault();
+                setIsDragOver(false);
             };
 
             // Process Images
@@ -363,10 +546,36 @@
                 setFileName("texture");
                 setSettings(DEFAULT_SETTINGS);
                 setShowSettings(false);
+                setFullscreenIndex(null);
+            };
+
+            const handleNavigate = (direction) => {
+                if (fullscreenIndex === null) return;
+                let newIndex = fullscreenIndex + direction;
+                if (newIndex < 0) newIndex = mapConfig.length - 1;
+                if (newIndex >= mapConfig.length) newIndex = 0;
+                setFullscreenIndex(newIndex);
             };
 
             return (
-                <div className="min-h-screen w-full bg-black text-white selection:bg-white selection:text-black font-sans overflow-x-hidden">
+                <div 
+                    onDrop={handleDrop} 
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className="min-h-screen w-full bg-black text-white selection:bg-white selection:text-black font-sans overflow-x-hidden relative"
+                >
+                    {/* Background Blobs (Only active on home screen) */}
+                    <InteractiveBackground active={!sourceImage} />
+
+                    {/* Fullscreen Modal */}
+                    {fullscreenIndex !== null && (
+                        <FullscreenModal 
+                            maps={mapConfig} 
+                            currentIndex={fullscreenIndex} 
+                            onClose={() => setFullscreenIndex(null)} 
+                            onNavigate={handleNavigate}
+                        />
+                    )}
                     
                     {/* --- Controls Overlay --- */}
                     <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
@@ -500,13 +709,13 @@
                         </div>
                     </div>
 
-                    <main className="pt-20 pb-20 px-6 max-w-7xl mx-auto">
+                    <main className="pt-20 pb-20 px-6 max-w-7xl mx-auto min-h-screen flex flex-col justify-center">
                         
                         {/* --- Hero / Input Section --- */}
-                        <div className={`flex flex-col items-center justify-center text-center transition-all duration-700 ${sourceImage ? 'mb-10' : 'min-h-[80vh]'}`}>
+                        <div className={`flex flex-col items-center justify-center text-center transition-all duration-700 ${sourceImage ? 'mb-10 min-h-0' : 'flex-1'}`}>
                         {!sourceImage ? (
-                            <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                                <div className="h-16 w-16 bg-white rounded-full mx-auto mb-8 flex items-center justify-center">
+                            <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000 z-10">
+                                <div className="h-16 w-16 bg-white rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg shadow-white/20">
                                     <Layers className="h-8 w-8 text-black" />
                                 </div>
                                 <h2 className="text-5xl sm:text-6xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent">
@@ -516,12 +725,16 @@
                                     Drop an image to extract PBR maps (normal, ao, diffuse, roughness, displacement) from your textures.
                                 </p>
                                 
-                                <label className="group relative flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 transition-all hover:border-white hover:bg-white/10">
+                                <label 
+                                    className={`group relative flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all backdrop-blur-sm ${isDragOver ? 'border-white bg-white/10 scale-105' : 'border-white/10 bg-white/5 hover:border-white hover:bg-white/10'}`}
+                                >
                                     <div className="flex flex-col items-center gap-4 transition-transform duration-300 group-hover:-translate-y-2">
                                         <div className="rounded-full bg-white/10 p-4 backdrop-blur-md transition-all group-hover:bg-white group-hover:text-black">
                                             <Upload className="h-6 w-6" />
                                         </div>
-                                        <div className="text-sm font-medium tracking-wider text-neutral-300">UPLOAD TEXTURE</div>
+                                        <div className="text-sm font-medium tracking-wider text-neutral-300">
+                                            {isDragOver ? 'DROP TO UPLOAD' : 'UPLOAD TEXTURE'}
+                                        </div>
                                     </div>
                                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                                 </label>
@@ -534,19 +747,49 @@
                         </div>
 
                         {/* --- Output Grid --- */}
-                        <div className={`grid gap-8 transition-all duration-1000 ${sourceImage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 grayscale hidden'}`}>
+                        <div className={`grid gap-8 transition-all duration-1000 pb-20 ${sourceImage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 grayscale hidden'}`}>
                         
                         {/* Row 1 */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <Card title="Original Diffuse" icon={ImageIcon} canvasRef={originalRef} loading={isProcessing} />
-                            <Card title="Normal Map" icon={Activity} canvasRef={normalRef} loading={isProcessing} />
-                            <Card title="Displacement Height" icon={Maximize} canvasRef={heightRef} loading={isProcessing} />
+                            <Card 
+                                title="Original Diffuse" 
+                                icon={ImageIcon} 
+                                canvasRef={originalRef} 
+                                loading={isProcessing} 
+                                onPreview={() => setFullscreenIndex(0)}
+                            />
+                            <Card 
+                                title="Normal Map" 
+                                icon={Activity} 
+                                canvasRef={normalRef} 
+                                loading={isProcessing} 
+                                onPreview={() => setFullscreenIndex(1)}
+                            />
+                            <Card 
+                                title="Displacement Height" 
+                                icon={Maximize} 
+                                canvasRef={heightRef} 
+                                loading={isProcessing} 
+                                onPreview={() => setFullscreenIndex(2)}
+                            />
                         </div>
 
                         {/* Row 2 */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <Card title="Roughness / Specular" icon={Droplet} canvasRef={roughnessRef} loading={isProcessing} />
-                            <Card title="Ambient Occlusion" icon={Sun} canvasRef={aoRef} loading={isProcessing} />
+                            <Card 
+                                title="Roughness / Specular" 
+                                icon={Droplet} 
+                                canvasRef={roughnessRef} 
+                                loading={isProcessing} 
+                                onPreview={() => setFullscreenIndex(3)}
+                            />
+                            <Card 
+                                title="Ambient Occlusion" 
+                                icon={Sun} 
+                                canvasRef={aoRef} 
+                                loading={isProcessing} 
+                                onPreview={() => setFullscreenIndex(4)}
+                            />
                         </div>
 
                         </div>
