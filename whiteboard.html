@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portable Whiteboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Fixed Light Mode Glass Variables */
+            --glass-blur: blur(20px) saturate(180%);
+            --glass-border: 1px solid rgba(0, 0, 0, 0.1);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            overflow: hidden;
+            touch-action: none;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f9fafb; /* Always Light Background for UI */
+            color: #111827; /* Darker text */
+        }
+
+        /* Standardized Glass Panel (Always Light) */
+        .glass-panel {
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            box-shadow: var(--shadow-glass);
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn {
+            transition: all 0.2s;
+            position: relative;
+            border-radius: 12px;
+            color: #4b5563; /* Gray-600 */
+        }
+        
+        .tool-btn:hover { background-color: rgba(0, 0, 0, 0.05); color: #000; }
+
+        .tool-btn.active {
+            background-color: #fff;
+            color: #007AFF !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        /* Color Picker Reset */
+        input[type="color"] { -webkit-appearance: none; border: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2); }
+        
+        canvas { touch-action: none; outline: none; }
+
+        /* Floating Text Input */
+        #textInputOverlay {
+            position: absolute;
+            background: transparent;
+            border: 2px dashed #007AFF;
+            outline: none;
+            padding: 4px;
+            font-family: sans-serif;
+            min-width: 50px;
+            z-index: 100;
+            display: none;
+            white-space: pre;
+            overflow: hidden;
+        }
+
+        /* Solid Gallery Background */
+        #homeScreen {
+            background-color: #f3f4f6; /* Gray-100 solid */
+        }
+        
+        /* Ensures the canvas is hidden when the home screen is active */
+        #board.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body ondragover="event.preventDefault()" ondrop="handleGlobalDrop(event)">
+
+    <!-- Hidden Video & File Input -->
+    <video id="pipVideo" class="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none" muted playsinline></video>
+    <input type="file" id="fileInput" accept=".json,.whiteboard" class="hidden" onchange="handleFileImport(this)">
+
+    <!-- Text Input Overlay -->
+    <div id="textInputOverlay" contenteditable="true"></div>
+
+    <!-- Top Bar -->
+    <div id="topBar" class="absolute top-0 left-0 w-full z-40 p-4 flex justify-between items-center pointer-events-none transition-opacity duration-300 opacity-0">
+        <div class="pointer-events-auto flex items-center gap-3">
+            <button onclick="showHome()" class="glass-panel p-2 px-4 rounded-full text-sm font-bold text-gray-800 hover:scale-105 active:scale-95 transition">
+                <i class="fa-solid fa-chevron-left mr-2"></i> Gallery
+            </button>
+            <div class="flex flex-col">
+                <span id="boardNameDisplay" class="text-gray-900 text-sm font-bold drop-shadow-sm px-2">Loading...</span>
+            </div>
+            <span id="saveStatus" class="text-xs text-gray-800 font-semibold opacity-0 transition-opacity duration-500 bg-white/50 px-2 py-1 rounded-md">Saved</span>
+        </div>
+
+        <div class="pointer-events-auto flex gap-2">
+            <!-- File Actions -->
+            <div class="glass-panel rounded-full px-2 py-1 gap-1 mr-2 flex">
+                <button onclick="triggerImport()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-700 hover:bg-black/5 transition" title="Open File">
+                    <i class="fa-solid fa-folder-open text-sm"></i>
+                </button>
+                <button onclick="openExportModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-700 hover:bg-black/5 transition" title="Export to File">
+                    <i class="fa-solid fa-download text-sm"></i>
+                </button>
+            </div>
+
+             <!-- Undo/Redo -->
+            <div class="hidden md:flex glass-panel rounded-full px-2 py-1 gap-1 mr-2">
+                <button onclick="undo()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-700 hover:bg-black/5 transition" title="Undo (Ctrl+Z)">
+                    <i class="fa-solid fa-rotate-left text-sm"></i>
+                </button>
+                <button onclick="redo()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-700 hover:bg-black/5 transition" title="Redo (Ctrl+Shift+Z)">
+                    <i class="fa-solid fa-rotate-right text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Canvas Background Toggle (Per Board) -->
+            <button onclick="toggleBoardBackground()" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-gray-800 hover:scale-105 transition" title="Toggle Canvas Background">
+                <i id="themeIcon" class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN DOCK -->
+    <div id="toolDock" class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50 w-auto max-w-[95vw] transition-opacity duration-300 opacity-0">
+        <div class="glass-panel flex items-center gap-2 px-4 py-3 rounded-3xl">
+            
+            <button id="btnCursor" onclick="setTool('cursor')" class="tool-btn w-10 h-10 flex items-center justify-center" title="Select / Transform (V)">
+                <i class="fa-solid fa-arrow-pointer"></i>
+            </button>
+
+            <button id="btnPen" onclick="setTool('pen')" class="tool-btn active w-10 h-10 flex items-center justify-center" title="Pen (P)">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+
+            <!-- Text Tool -->
+            <button id="btnText" onclick="setTool('text')" class="tool-btn w-10 h-10 flex items-center justify-center" title="Text (T)">
+                <i class="fa-solid fa-font"></i>
+            </button>
+
+            <div class="w-px h-6 bg-gray-300 mx-1"></div>
+
+            <div class="flex items-center gap-3 px-1">
+                <div class="relative group">
+                    <input type="color" id="colorPicker" value="#000000" class="w-8 h-8 rounded-full cursor-pointer shadow-sm transition-transform hover:scale-110">
+                </div>
+                <div class="flex flex-col w-20">
+                    <input type="range" id="lineWidth" min="1" max="20" value="3" class="h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <div class="w-px h-6 bg-gray-300 mx-1"></div>
+
+            <button id="btnEraser" onclick="setTool('eraser')" class="tool-btn w-10 h-10 flex items-center justify-center" title="Eraser (E)">
+                <i class="fa-solid fa-eraser"></i>
+            </button>
+
+            <button id="btnDeleteSelected" onclick="deleteSelected()" class="tool-btn w-10 h-10 flex items-center justify-center text-red-600 hidden" title="Delete Selected (Del)">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+
+            <button onclick="confirmClear()" class="tool-btn w-10 h-10 flex items-center justify-center hover:text-red-600" title="Clear Board">
+                <i class="fa-solid fa-ban"></i>
+            </button>
+
+            <button onclick="togglePiP()" class="tool-btn w-10 h-10 flex items-center justify-center hover:text-purple-600" title="PiP Mode">
+                <i class="fa-solid fa-tv"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- HOME SCREEN (Gallery) - Solid Background -->
+    <div id="homeScreen" class="absolute inset-0 z-[60] flex flex-col p-8 transition-all duration-300">
+        <div class="max-w-6xl mx-auto w-full h-full flex flex-col">
+            <div class="flex justify-between items-end mb-8">
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 mb-1 tracking-tight">
+                        Your boards 
+                        <span class="text-base font-semibold text-gray-600 ml-1 block sm:inline-block">brought to you by Enoicks</span>
+                    </h1>
+                    <p class="text-gray-700 font-medium text-sm">All changes save automatically to this browser.</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="triggerImport()" class="bg-white border border-gray-200 text-gray-900 px-6 py-3 rounded-full font-bold hover:bg-gray-50 transition flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-upload"></i> Import File
+                    </button>
+                    <button onclick="createNewBoard()" class="bg-[#007AFF] hover:bg-[#005ecb] text-white px-6 py-3 rounded-full font-bold shadow-lg hover:shadow-blue-500/30 transition transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> New Board
+                    </button>
+                </div>
+            </div>
+            <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pb-20 flex-1 px-2"></div>
+        </div>
+    </div>
+
+    <!-- EXPORT MODAL -->
+    <div id="exportModal" class="hidden absolute inset-0 z-[80] bg-black/20 backdrop-blur-sm flex items-center justify-center">
+        <div class="glass-panel rounded-3xl p-8 max-w-sm w-full mx-4 text-center bg-white">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Export Board</h3>
+            <input type="text" id="exportNameInput" placeholder="File Name" class="w-full bg-gray-100 border-none rounded-xl px-4 py-3 mb-6 text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none font-medium">
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeExportModal()" class="px-5 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold transition hover:bg-gray-200">Cancel</button>
+                <button onclick="performExport()" class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transition">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLEAR CONFIRM MODAL -->
+    <div id="confirmModal" class="hidden absolute inset-0 z-[70] bg-black/20 backdrop-blur-sm flex items-center justify-center">
+        <div class="glass-panel rounded-3xl p-8 max-w-sm w-full mx-4 text-center bg-white">
+            <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">Clear everything?</h3>
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="closeModal()" class="px-5 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold transition hover:bg-gray-200">Cancel</button>
+                <button onclick="performClear()" class="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg transition">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="board" class="hidden"></canvas>
+
+    <script>
+        // --- 1. IndexedDB (Persistence) ---
+        // Using IndexedDB for reliable, large-scale local storage (needed for images/large drawings).
+        const DB_NAME = 'GlassWhiteboardDB';
+        const DB_VERSION = 2; // Increased version to handle new thumbnail field
+        const STORE_NAME = 'boards';
+
+        const dbPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = () => reject('DB Error');
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                // Note: The store is created, new fields like 'thumbnail' will just be added to documents
+            };
+            request.onsuccess = (e) => resolve(e.target.result);
+        });
+
+        async function saveBoardToDB(board) {
+            const db = await dbPromise;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(board);
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+        }
+
+        async function getBoardsFromDB() {
+            const db = await dbPromise;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = reject;
+            });
+        }
+
+        async function deleteBoardFromDB(id) {
+            const db = await dbPromise;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.delete(id);
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+        }
+
+        // --- 2. State & Setup ---
+        const canvas = document.getElementById('board');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const pipVideo = document.getElementById('pipVideo');
+        const textInput = document.getElementById('textInputOverlay');
+        const themeIcon = document.getElementById('themeIcon');
+        
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        const state = {
+            currentBoardId: null,
+            boardTheme: 'light', 
+            tool: 'pen', 
+            items: [], 
+            undoStack: [],
+            redoStack: [],
+            selectedItem: null,
+            dragStart: { x: 0, y: 0 },
+            action: null,
+            resizeHandle: null,
+            initialItemState: null,
+            color: '#000000',
+            lineWidth: 3,
+            isTyping: false
+        };
+
+        // --- 3. Drag & Drop Logic ---
+        async function handleGlobalDrop(e) {
+            e.preventDefault();
+            const items = e.dataTransfer.items;
+            if(!items || state.currentBoardId === null) return; // Only allow drops when a board is open
+
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    await processImageFile(file, e.clientX, e.clientY);
+                }
+            }
+        }
+        
+        function processImageFile(file, x = width/2, y = height/2) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        saveHistoryState();
+                        let w = img.width, h = img.height;
+                        const maxD = Math.min(width, height) * 0.5;
+                        if (w > maxD || h > maxD) { const r = Math.min(maxD / w, maxD / h); w *= r; h *= r; }
+                        
+                        const newItem = { type: 'image', img: img, cx: x, cy: y, w: w, h: h, rotation: 0 };
+                        state.items.push(newItem);
+                        
+                        setTool('cursor');
+                        state.selectedItem = newItem;
+                        triggerSave();
+                        redraw();
+                        resolve();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- 4. File Import/Export ---
+        function triggerImport() { document.getElementById('fileInput').click(); }
+        
+        function handleFileImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    const newId = 'imported_' + Date.now();
+                    const newBoard = {
+                        ...data,
+                        id: newId,
+                        name: data.name || file.name.replace('.json','').replace('.whiteboard',''),
+                        updatedAt: Date.now()
+                    };
+                    saveBoardToDB(newBoard).then(() => loadBoard(newId));
+                    input.value = ''; 
+                } catch (err) { console.error("Import error:", err); }
+            };
+            reader.readAsText(file);
+        }
+
+        function openExportModal() {
+            document.getElementById('exportNameInput').value = document.getElementById('boardNameDisplay').innerText;
+            document.getElementById('exportModal').classList.remove('hidden');
+        }
+        function closeExportModal() { document.getElementById('exportModal').classList.add('hidden'); }
+
+        function performExport() {
+            const name = document.getElementById('exportNameInput').value || 'Whiteboard';
+            document.getElementById('boardNameDisplay').innerText = name;
+            autoSave(); 
+
+            const exportData = {
+                version: 1,
+                name: name,
+                boardTheme: state.boardTheme,
+                createdAt: Date.now(),
+                items: state.items.map(i => {
+                    if(i.type === 'image') return { ...i, imgData: i.img.src, img: null }; 
+                    return i;
+                })
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", name + ".whiteboard");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            closeExportModal();
+        }
+
+        // --- 5. History ---
+        function saveHistoryState() {
+            if (state.undoStack.length > 20) state.undoStack.shift();
+            const snapshot = JSON.parse(JSON.stringify(state.items.map(i => {
+                if(i.type === 'image') return { ...i, imgData: i.img.src, img: null };
+                return i;
+            })));
+            state.undoStack.push(snapshot);
+            state.redoStack = []; 
+            // triggerSave is called aggressively in handleMove, but we also call it here to ensure history steps are saved.
+            triggerSave(); 
+        }
+
+        function restoreState(snapshot) {
+            const promises = snapshot.map(item => {
+                return new Promise(resolve => {
+                    if (item.type === 'image' && item.imgData) {
+                        const img = new Image();
+                        img.onload = () => resolve({ ...item, img: img });
+                        img.onerror = () => resolve(item); // Handle broken image data gracefully
+                        img.src = item.imgData;
+                    } else {
+                        resolve(item);
+                    }
+                });
+            });
+            Promise.all(promises).then(items => {
+                state.items = items;
+                state.selectedItem = null;
+                redraw();
+            });
+        }
+
+        function undo() {
+            if (state.undoStack.length === 0) return;
+            // Capture current state before undoing to push onto redo stack
+            const currentSnapshot = JSON.parse(JSON.stringify(state.items.map(i => {
+                if(i.type === 'image') return { ...i, imgData: i.img.src, img: null };
+                return i;
+            })));
+            state.redoStack.push(currentSnapshot);
+            restoreState(state.undoStack.pop());
+        }
+
+        function redo() {
+            if (state.redoStack.length === 0) return;
+            // Capture current state before redoing to push onto undo stack
+            const currentSnapshot = JSON.parse(JSON.stringify(state.items.map(i => {
+                if(i.type === 'image') return { ...i, imgData: i.img.src, img: null };
+                return i;
+            })));
+            state.undoStack.push(currentSnapshot);
+            restoreState(state.redoStack.pop());
+        }
+
+        // --- 6. Rendering ---
+        function redraw() {
+            // Apply Board Theme
+            const canvasBgColor = state.boardTheme === 'dark' ? '#09090b' : '#ffffff';
+            ctx.fillStyle = canvasBgColor;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Update theme icon
+            if (state.boardTheme === 'dark') {
+                themeIcon.classList.remove('fa-moon');
+                themeIcon.classList.add('fa-sun');
+            } else {
+                themeIcon.classList.remove('fa-sun');
+                themeIcon.classList.add('fa-moon');
+            }
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            state.items.forEach(item => {
+                ctx.save();
+                if (item.type === 'stroke') {
+                    ctx.beginPath();
+                    ctx.strokeStyle = item.color;
+                    ctx.lineWidth = item.size;
+                    if (item.points.length > 0) {
+                        ctx.moveTo(item.points[0].x, item.points[0].y);
+                        for (let i = 1; i < item.points.length; i++) ctx.lineTo(item.points[i].x, item.points[i].y);
+                    }
+                    ctx.stroke();
+                } 
+                else if (item.type === 'image' && item.img) {
+                    ctx.translate(item.cx, item.cy);
+                    ctx.rotate(item.rotation);
+                    ctx.drawImage(item.img, -item.w / 2, -item.h / 2, item.w, item.h);
+                    if (state.selectedItem === item) drawSelectionBorder(item.w, item.h);
+                } 
+                else if (item.type === 'text') {
+                    ctx.translate(item.cx, item.cy);
+                    ctx.rotate(item.rotation);
+                    const scale = item.size; 
+                    const fontSize = scale * 5 + 10;
+                    ctx.font = `${fontSize}px sans-serif`; 
+                    
+                    // Auto Color Inversion Logic based on BOARD Theme
+                    if (item.autoColor) {
+                        ctx.fillStyle = state.boardTheme === 'dark' ? '#ffffff' : '#000000';
+                    } else {
+                        ctx.fillStyle = item.color;
+                    }
+                    
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(item.text, 0, 0);
+                    
+                    // Measure and update width/height for selection box
+                    const metrics = ctx.measureText(item.text);
+                    item.w = metrics.width;
+                    item.h = fontSize; 
+
+                    if (state.selectedItem === item) drawSelectionBorder(item.w, item.h);
+                }
+                ctx.restore();
+            });
+
+            if (state.selectedItem) {
+                drawTransformHandles(state.selectedItem);
+                document.getElementById('btnDeleteSelected').classList.remove('hidden');
+            } else {
+                document.getElementById('btnDeleteSelected').classList.add('hidden');
+            }
+        }
+
+        function drawSelectionBorder(w, h) {
+            ctx.strokeStyle = '#007AFF';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-w / 2 - 5, -h / 2 - 5, w + 10, h + 10);
+        }
+
+        function drawTransformHandles(item) {
+            const size = 10;
+            const halfW = item.w / 2 + 5;
+            const halfH = item.h / 2 + 5;
+
+            ctx.save();
+            ctx.translate(item.cx, item.cy);
+            ctx.rotate(item.rotation);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -halfH);
+            ctx.lineTo(0, -halfH - 25);
+            ctx.strokeStyle = '#007AFF';
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#007AFF';
+            ctx.lineWidth = 2;
+
+            const corners = [
+                {x: -halfW, y: -halfH}, {x: halfW, y: -halfH},
+                {x: -halfW, y: halfH}, {x: halfW, y: halfH}
+            ];
+            corners.forEach(p => {
+                ctx.beginPath();
+                ctx.rect(p.x - size/2, p.y - size/2, size, size);
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            ctx.beginPath();
+            ctx.arc(0, -halfH - 25, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // --- 7. Interaction & Tool Logic ---
+        function toLocal(pt, item) {
+            const dx = pt.x - item.cx;
+            const dy = pt.y - item.cy;
+            return {
+                x: dx * Math.cos(-item.rotation) - dy * Math.sin(-item.rotation),
+                y: dx * Math.sin(-item.rotation) + dy * Math.cos(-item.rotation)
+            };
+        }
+        function hitTestBox(pt, item) {
+            const local = toLocal(pt, item);
+            return Math.abs(local.x) <= (item.w/2 + 5) && Math.abs(local.y) <= (item.h/2 + 5);
+        }
+        function getHitHandle(pt, item) {
+            const local = toLocal(pt, item);
+            const halfW = item.w / 2 + 5;
+            const halfH = item.h / 2 + 5;
+            const handleSize = 25; 
+
+            if (Math.hypot(local.x, local.y - (-halfH - 25)) < handleSize) return 'rotate';
+            if (Math.abs(local.x - (-halfW)) < handleSize && Math.abs(local.y - (-halfH)) < handleSize) return 'tl';
+            if (Math.abs(local.x - (halfW)) < handleSize && Math.abs(local.y - (-halfH)) < handleSize) return 'tr';
+            if (Math.abs(local.x - (-halfW)) < handleSize && Math.abs(local.y - (halfH)) < handleSize) return 'bl';
+            if (Math.abs(local.x - (halfW)) < handleSize && Math.abs(local.y - (halfH)) < handleSize) return 'br';
+            return null;
+        }
+        function getPos(e) {
+            if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function handleStart(e) {
+            if (state.isTyping) { confirmTextEntry(); return; }
+            if (e.target.closest('.glass-panel') || e.target.closest('button') || state.currentBoardId === null) return;
+            
+            e.preventDefault();
+            const pos = getPos(e);
+            state.dragStart = pos;
+
+            // Transform Handles
+            if (state.selectedItem) {
+                const handle = getHitHandle(pos, state.selectedItem);
+                if (handle) {
+                    saveHistoryState();
+                    state.action = handle === 'rotate' ? 'rotating' : 'resizing';
+                    state.resizeHandle = handle;
+                    state.initialItemState = { ...state.selectedItem };
+                    return;
+                }
+            }
+
+            // Text Tool
+            if (state.tool === 'text') {
+                for (let i = state.items.length - 1; i >= 0; i--) {
+                    const item = state.items[i];
+                    if (item.type === 'text' && hitTestBox(pos, item)) {
+                        startTextEntry(item.cx, item.cy, item.text, item);
+                        return;
+                    }
+                }
+                startTextEntry(pos.x, pos.y);
+                return;
+            }
+
+            // Eraser
+            if (state.tool === 'eraser') {
+                saveHistoryState();
+                state.action = 'drawing';
+                checkEraser(pos);
+                return;
+            }
+
+            // Cursor
+            if (state.tool === 'cursor') {
+                let clicked = null;
+                for (let i = state.items.length - 1; i >= 0; i--) {
+                    const item = state.items[i];
+                    if ((item.type === 'image' || item.type === 'text') && hitTestBox(pos, item)) {
+                        clicked = item;
+                        break;
+                    }
+                }
+                if (clicked) {
+                    if (state.selectedItem !== clicked) {
+                        state.selectedItem = clicked;
+                        redraw();
+                    }
+                    saveHistoryState();
+                    state.action = 'moving';
+                    state.initialItemState = { ...clicked };
+                } else {
+                    if (state.selectedItem) {
+                        state.selectedItem = null;
+                        redraw();
+                    }
+                }
+                return;
+            }
+
+            // Pen
+            if (state.tool === 'pen') {
+                saveHistoryState();
+                state.selectedItem = null;
+                state.action = 'drawing';
+                state.items.push({
+                    type: 'stroke',
+                    color: state.color,
+                    size: state.lineWidth,
+                    points: [{x: pos.x, y: pos.y}]
+                });
+                triggerSave(); 
+                redraw();
+            }
+        }
+
+        function handleMove(e) {
+            if (!state.action) return;
+            e.preventDefault(); 
+            const pos = getPos(e);
+            const dx = pos.x - state.dragStart.x;
+            const dy = pos.y - state.dragStart.y;
+
+            if (state.action === 'drawing') {
+                if (state.tool === 'eraser') {
+                    checkEraser(pos);
+                } else {
+                    const stroke = state.items[state.items.length - 1];
+                    const lastPt = stroke.points[stroke.points.length-1];
+                    if (Math.hypot(pos.x - lastPt.x, pos.y - lastPt.y) > 2) {
+                        stroke.points.push({x: pos.x, y: pos.y});
+                        redraw();
+                    }
+                }
+            }
+            else if (state.action === 'moving' && state.selectedItem) {
+                state.selectedItem.cx = state.initialItemState.cx + dx;
+                state.selectedItem.cy = state.initialItemState.cy + dy;
+                redraw();
+            }
+            else if (state.action === 'rotating' && state.selectedItem) {
+                const item = state.selectedItem;
+                const angle = Math.atan2(pos.y - item.cy, pos.x - item.cx);
+                item.rotation = angle + Math.PI / 2;
+                redraw();
+            }
+            else if (state.action === 'resizing' && state.selectedItem) {
+                const item = state.selectedItem;
+                const init = state.initialItemState;
+                if (item.type === 'text') {
+                    const currentDist = Math.hypot(pos.x - item.cx, pos.y - item.cy);
+                    const startDist = Math.hypot(init.w/2, init.h/2);
+                    const scale = currentDist / Math.max(1, startDist);
+                    item.size = Math.max(1, init.size * scale);
+                } else {
+                    const currentDist = Math.hypot(pos.x - item.cx, pos.y - item.cy);
+                    const startDist = Math.hypot(init.w/2, init.h/2);
+                    const scale = currentDist / Math.max(1, startDist);
+                    item.w = Math.max(30, init.w * scale);
+                    item.h = Math.max(30, init.h * scale);
+                }
+                redraw();
+            }
+            // Aggressive save on move (debounced slightly to prevent DB locking)
+            triggerSave(); 
+        }
+
+        function handleEnd() {
+            if (state.action) triggerSave();
+            state.action = null;
+        }
+
+        function checkEraser(pos) {
+            const threshold = 15;
+            let changes = false;
+            for (let i = state.items.length - 1; i >= 0; i--) {
+                const item = state.items[i];
+                if (item.type === 'stroke') {
+                    for (let p of item.points) {
+                        if (Math.hypot(p.x - pos.x, p.y - pos.y) < threshold) {
+                            state.items.splice(i, 1);
+                            changes = true;
+                            break; 
+                        }
+                    }
+                } else if (item.type === 'image' || item.type === 'text') {
+                    if (hitTestBox(pos, item)) {
+                        state.items.splice(i, 1);
+                        if (state.selectedItem === item) state.selectedItem = null;
+                        changes = true;
+                    }
+                }
+            }
+            if (changes) {
+                redraw();
+                triggerSave();
+            }
+        }
+
+        // --- 8. Text Entry Logic ---
+        let currentTextEditItem = null;
+        function startTextEntry(x, y, existingText = '', item = null) {
+            state.isTyping = true;
+            currentTextEditItem = item;
+            
+            textInput.innerText = existingText;
+            textInput.style.display = 'block';
+            textInput.style.left = x + 'px';
+            textInput.style.top = y + 'px';
+            // Text color for input matches the board theme logic for visibility
+            textInput.style.color = state.boardTheme === 'dark' ? 'white' : 'black';
+            textInput.style.fontSize = (item ? (item.size * 5 + 10) : 20) + 'px';
+            textInput.focus();
+        }
+
+        function confirmTextEntry() {
+            if (!state.isTyping) return;
+            const text = textInput.innerText.trim();
+            const rect = textInput.getBoundingClientRect();
+            
+            if (text) {
+                saveHistoryState();
+                if (currentTextEditItem) {
+                    currentTextEditItem.text = text;
+                } else {
+                    state.items.push({
+                        type: 'text',
+                        text: text,
+                        color: state.color,
+                        autoColor: true, 
+                        size: 3, 
+                        cx: rect.left + rect.width/2,
+                        cy: rect.top + rect.height/2,
+                        rotation: 0,
+                        w: 0, h: 0 
+                    });
+                }
+                redraw();
+                triggerSave();
+            } else if (currentTextEditItem) {
+                // If text is empty, delete the existing text item
+                state.items = state.items.filter(i => i !== currentTextEditItem);
+                redraw();
+                triggerSave();
+            }
+
+            state.isTyping = false;
+            currentTextEditItem = null;
+            textInput.innerText = '';
+            textInput.style.display = 'none';
+        }
+        
+        textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                confirmTextEntry();
+            }
+        });
+
+        // --- 9. Init & Events ---
+        async function init() {
+            resize();
+            // Start by showing the gallery on load
+            showHome();
+        }
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            redraw();
+        }
+        window.addEventListener('resize', resize);
+
+        // Thumbnail Generation (New)
+        function generateThumbnail() {
+            const tempCanvas = document.createElement('canvas');
+            const thumbSize = 200; // Thumbnail size
+            
+            // Set up temporary canvas to match aspect ratio of main canvas
+            const ratio = width / height;
+            tempCanvas.width = thumbSize * ratio;
+            tempCanvas.height = thumbSize;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Draw current canvas content onto the temporary canvas
+            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Return compressed PNG data URL
+            return tempCanvas.toDataURL('image/png', 0.5); 
+        }
+        
+        // Auto Save Logic
+        function autoSave() {
+            if (!state.currentBoardId) return;
+            
+            const thumbnailData = generateThumbnail();
+
+            const boardData = {
+                id: state.currentBoardId,
+                updatedAt: Date.now(),
+                name: document.getElementById('boardNameDisplay').innerText,
+                boardTheme: state.boardTheme, 
+                thumbnail: thumbnailData, // Save the generated thumbnail
+                items: state.items.map(i => {
+                    if(i.type === 'image') return { ...i, imgData: i.img.src, img: null }; 
+                    return i;
+                })
+            };
+            saveBoardToDB(boardData).then(() => {
+                const status = document.getElementById('saveStatus');
+                status.style.opacity = '1';
+                setTimeout(() => status.style.opacity = '0', 2000);
+            });
+        }
+        let saveTimeout;
+        
+        function triggerSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(autoSave, 300); }
+
+        // Save on tab/window close
+        window.addEventListener('beforeunload', autoSave);
+
+        // Utils
+        function setTool(t) {
+            state.tool = t;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const map = {pen:'btnPen', cursor:'btnCursor', eraser:'btnEraser', text:'btnText'};
+            if(map[t]) document.getElementById(map[t]).classList.add('active');
+            
+            state.selectedItem = null; 
+            canvas.style.cursor = t === 'cursor' ? 'default' : t === 'text' ? 'text' : 'crosshair';
+            redraw();
+        }
+
+        function deleteSelected() {
+            if (state.selectedItem) {
+                saveHistoryState();
+                state.items = state.items.filter(i => i !== state.selectedItem);
+                state.selectedItem = null;
+                triggerSave();
+                redraw();
+            }
+        }
+        
+        // This toggles the CANVAS background only
+        function toggleBoardBackground() { 
+            state.boardTheme = state.boardTheme === 'light' ? 'dark' : 'light';
+            redraw(); 
+            triggerSave();
+        }
+
+        // Toggle PiP 
+        async function togglePiP() {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    pipVideo.srcObject = canvas.captureStream(30);
+                    try { await pipVideo.play(); } catch (e) { if (e.name !== 'AbortError') console.warn(e); }
+                    await pipVideo.requestPictureInPicture();
+                }
+            } catch (err) { 
+                console.error(err);
+                if (err.name !== 'AbortError') console.warn("PiP failed. Requires user interaction or HTTPS."); 
+            }
+        }
+
+        // Modals
+        function confirmClear() { document.getElementById('confirmModal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('confirmModal').classList.add('hidden'); }
+        function performClear() {
+            saveHistoryState();
+            state.items = [];
+            state.selectedItem = null;
+            closeModal();
+            triggerSave();
+            redraw();
+        }
+        
+        // Gallery
+        async function showHome() {
+            if (state.currentBoardId) autoSave(); // Final save before leaving board
+
+            state.currentBoardId = null; // Mark board as closed
+            document.getElementById('homeScreen').classList.remove('pointer-events-none', 'opacity-0');
+            document.getElementById('topBar').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('toolDock').classList.add('opacity-0', 'pointer-events-none');
+            canvas.classList.add('hidden');
+
+            const grid = document.getElementById('galleryGrid');
+            const boards = await getBoardsFromDB();
+            boards.sort((a, b) => b.updatedAt - a.updatedAt);
+            grid.innerHTML = '';
+
+            if (boards.length === 0) { grid.innerHTML = '<div class="col-span-full text-center text-gray-500 mt-10 font-medium">No boards yet. Create one!</div>'; return; }
+            
+            boards.forEach(board => {
+                const thumbnail = board.thumbnail || 'https://placehold.co/200x150/f9fafb/9ca3af?text=No+Preview';
+                const date = new Date(board.updatedAt).toLocaleDateString();
+
+                const div = document.createElement('div');
+                div.className = "group relative aspect-[4/3] bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer overflow-hidden flex flex-col";
+                div.innerHTML = `
+                    <div class="flex-1 bg-gray-50 flex items-center justify-center overflow-hidden">
+                        <img src="${thumbnail}" alt="Board Preview" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4 bg-white border-t border-gray-100 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-gray-900 text-base mb-1 truncate">${board.name || 'Untitled'}</h3>
+                            <p class="text-xs text-gray-500">Last edited: ${date}</p>
+                        </div>
+                        <button onclick="event.stopPropagation(); deleteBoard('${board.id}')" class="w-8 h-8 rounded-full hover:bg-red-500 hover:text-white transition text-gray-400 flex items-center justify-center"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                    </div>`;
+                div.onclick = () => loadBoard(board.id);
+                grid.appendChild(div);
+            });
+        }
+
+        async function createNewBoard() {
+            const id = 'board_' + Date.now();
+            await saveBoardToDB({ 
+                id, 
+                updatedAt: Date.now(), 
+                name: "Untitled Board", 
+                items: [], 
+                boardTheme: 'light',
+                thumbnail: 'https://placehold.co/200x150/f9fafb/9ca3af?text=Start+Drawing'
+            });
+            loadBoard(id);
+        }
+
+        async function loadBoard(id) {
+            const boards = await getBoardsFromDB();
+            const board = boards.find(b => b.id === id);
+            if (!board) return;
+            
+            state.currentBoardId = id;
+            state.boardTheme = board.boardTheme || 'light'; 
+            document.getElementById('boardNameDisplay').innerText = board.name || "Untitled";
+            
+            const promises = board.items.map(item => new Promise(resolve => {
+                if (item.type === 'image' && item.imgData) {
+                    const img = new Image();
+                    img.onload = () => resolve({ ...item, img: img });
+                    img.onerror = () => resolve({ ...item, img: null }); // Resolve even if image fails to load
+                    img.src = item.imgData;
+                } else resolve(item);
+            }));
+
+            Promise.all(promises).then(items => {
+                state.items = items;
+                state.undoStack = []; 
+                state.redoStack = [];
+                
+                // Show canvas and hide gallery/controls
+                document.getElementById('homeScreen').classList.add('pointer-events-none', 'opacity-0');
+                document.getElementById('topBar').classList.remove('opacity-0', 'pointer-events-none');
+                document.getElementById('toolDock').classList.remove('opacity-0', 'pointer-events-none');
+                canvas.classList.remove('hidden');
+
+                resize(); // Ensure canvas is sized correctly
+                setTool('pen'); // Reset tool to pen
+                redraw();
+            });
+        }
+
+        async function deleteBoard(id) { 
+            const confirmation = document.createElement('div');
+            confirmation.innerHTML = `<div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
+                <div class="bg-white p-6 rounded-xl shadow-2xl text-center">
+                    <p class="text-lg font-semibold mb-4">Are you sure you want to delete this board?</p>
+                    <div class="flex justify-center gap-3">
+                        <button id="cancelDelete" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                        <button id="confirmDelete" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">Delete</button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.appendChild(confirmation);
+
+            document.getElementById('cancelDelete').onclick = () => confirmation.remove();
+            document.getElementById('confirmDelete').onclick = async () => {
+                await deleteBoardFromDB(id); 
+                confirmation.remove();
+                showHome();
+            };
+        }
+
+        // Keys
+        window.addEventListener('keydown', (e) => {
+            if (state.currentBoardId === null) return;
+            // Prevent undo/redo when typing in the text input overlay
+            if (state.isTyping) return; 
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+            if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+            if (e.key === 'v') setTool('cursor');
+            if (e.key === 'p') setTool('pen');
+            if (e.key === 't') setTool('text');
+            if (e.key === 'e') setTool('eraser');
+        });
+        
+        window.addEventListener('paste', async (e) => {
+            if (state.currentBoardId === null) return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let index in items) {
+                const item = items[index];
+                if (item.kind === 'file' && item.type.includes('image/')) {
+                    const blob = item.getAsFile();
+                    await processImageFile(blob);
+                }
+            }
+        });
+        
+        document.getElementById('lineWidth').addEventListener('input', (e) => state.lineWidth = parseInt(e.target.value));
+        document.getElementById('colorPicker').addEventListener('input', (e) => { state.color = e.target.value; if(state.tool!=='text') setTool('pen'); });
+
+        // Event Listeners for Drawing
+        canvas.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', handleStart, { passive: false });
+        canvas.addEventListener('touchmove', handleMove, { passive: false });
+        canvas.addEventListener('touchend', handleEnd);
+
+        init();
+    </script>
+</body>
+</html>
