@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planner</title>
+    <title>Schedule/Planner</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -122,13 +122,13 @@
         .wheel-container {
             height: 120px;
             overflow-y: scroll;
-            scroll-snap-type: y mandatory;
+            /* Removed scroll-snap to fix smooth drag */
+            /* scroll-snap-type: y mandatory; */
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none;  /* IE 10+ */
             position: relative;
-            /* Removed padding-top/bottom here to fix "bottom selection" issue. 
-               We will use JS spacer divs instead. */
             cursor: grab;
+            user-select: none;
         }
         .wheel-container:active {
             cursor: grabbing;
@@ -141,7 +141,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            scroll-snap-align: center;
+            /* Removed scroll-snap to fix smooth drag */
+            /* scroll-snap-align: center; */
             font-size: 1rem;
             font-weight: 500;
             color: #8E8E93;
@@ -513,22 +514,54 @@
             container.appendChild(spacerBottom.cloneNode());
 
             // --- Scroll Snap Logic ---
-            let timeout;
+            let scrollTimeout;
+            let isSnapping = false;
+
+            const snapToNearest = () => {
+                const index = Math.round(container.scrollTop / 40);
+                const targetY = index * 40;
+                
+                // Only snap if we aren't already there (tolerance 1px)
+                if (Math.abs(container.scrollTop - targetY) > 1) {
+                    isSnapping = true;
+                    container.scrollTo({ top: targetY, behavior: 'smooth' });
+                    // Update active class logic immediately or after?
+                    // Let's do it after via the timeout recursion or here directly.
+                    // Doing it here visually updates faster.
+                    updateActiveItem(index);
+                } else {
+                    updateActiveItem(index);
+                }
+            };
+
+            const updateActiveItem = (index) => {
+                const wheelItems = container.querySelectorAll('.wheel-item:not(.pointer-events-none)');
+                wheelItems.forEach(item => item.classList.remove('active'));
+                
+                if(wheelItems[index]) {
+                    wheelItems[index].classList.add('active');
+                    let val = wheelItems[index].textContent;
+                    if(!isNaN(parseInt(val))) val = parseInt(val);
+                    onChange(val);
+                }
+            };
+
             container.addEventListener('scroll', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    const index = Math.round(container.scrollTop / 40);
-                    const wheelItems = container.querySelectorAll('.wheel-item:not(.pointer-events-none)');
-                    
-                    wheelItems.forEach(item => item.classList.remove('active'));
-                    
-                    if(wheelItems[index]) {
-                        wheelItems[index].classList.add('active');
-                        let val = wheelItems[index].textContent;
-                        if(!isNaN(parseInt(val))) val = parseInt(val);
-                        onChange(val);
-                    }
-                }, 50);
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    isSnapping = false;
+                    snapToNearest();
+                }, 80); // Debounce time
+            });
+
+            // --- Single Step Wheel Scroll ---
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const direction = Math.sign(e.deltaY);
+                container.scrollBy({
+                    top: direction * 40,
+                    behavior: 'smooth'
+                });
             });
 
             // --- Drag Logic ---
