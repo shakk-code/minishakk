@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planner</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        ios: {
+                            bg: '#F2F2F7',
+                            card: '#FFFFFF',
+                            text: '#000000',
+                            subtext: '#8E8E93',
+                            blue: '#007AFF',
+                            red: '#FF3B30',
+                            green: '#34C759',
+                            separator: '#C6C6C8',
+                            dark: {
+                                bg: '#000000',
+                                card: '#1C1C1E',
+                                text: '#FFFFFF',
+                                subtext: '#98989D',
+                                separator: '#38383A'
+                            }
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 8px 30px rgba(0,0,0,0.04)',
+                        'hover': '0 10px 40px rgba(0,0,0,0.08)',
+                        'glow': '0 0 20px rgba(0,0,0,0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --zoom-scale: 1;
+        }
+
+        body {
+            background-color: #F5F5F7;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overscroll-behavior: none;
+        }
+
+        .dark body {
+            background-color: #000000;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(128,128,128,0.2);
+            border-radius: 20px;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-checkbox:checked + div {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        
+        button, input, .day-cell, .task-card-wrapper {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Zoomable Task Styles */
+        .task-card-wrapper {
+            transform-origin: top left;
+            font-size: calc(1rem * var(--zoom-scale));
+        }
+        .task-card-inner {
+            padding: calc(1rem * var(--zoom-scale));
+        }
+        .task-time-col {
+            width: calc(5rem * var(--zoom-scale)); /* Widen for start/end */
+        }
+
+        /* Toggle Switch Fixed Logic */
+        .toggle-checkbox {
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), border-color 0.3s ease;
+        }
+        .toggle-checkbox:checked {
+            transform: translateX(100%);
+            border-color: #007AFF;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #007AFF;
+        }
+        
+        /* Wheel Picker Styles */
+        .wheel-container {
+            height: 120px;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE 10+ */
+            position: relative;
+            /* Removed padding-top/bottom here to fix "bottom selection" issue. 
+               We will use JS spacer divs instead. */
+            cursor: grab;
+        }
+        .wheel-container:active {
+            cursor: grabbing;
+        }
+        .wheel-container::-webkit-scrollbar { 
+            display: none;  /* Chrome/Safari */
+        }
+        .wheel-item {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            scroll-snap-align: center;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #8E8E93;
+            transition: all 0.2s ease-out;
+            cursor: pointer;
+            opacity: 0.4;
+            transform: scale(0.85);
+            user-select: none;
+        }
+        .wheel-item.active {
+            color: #000000;
+            font-weight: 700;
+            transform: scale(1.15);
+            opacity: 1;
+            font-size: 1.25rem;
+        }
+        .dark .wheel-item.active {
+            color: #FFFFFF;
+        }
+        .wheel-highlight {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 40px;
+            transform: translateY(-50%);
+            border-top: 1px solid rgba(128,128,128,0.2);
+            border-bottom: 1px solid rgba(128,128,128,0.2);
+            pointer-events: none;
+            background: rgba(128,128,128,0.05);
+            z-index: 0;
+        }
+
+    </style>
+</head>
+<body class="h-screen w-full flex items-center justify-center p-4 sm:p-8 text-ios-text dark:text-ios-dark-text selection:bg-black dark:selection:bg-white dark:selection:text-black overflow-hidden transition-colors">
+
+    <!-- Notification Container -->
+    <div id="notification-area" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Main App Container -->
+    <div class="w-full max-w-7xl h-full max-h-[900px] bg-white dark:bg-ios-dark-card rounded-[32px] shadow-2xl flex flex-col md:flex-row overflow-hidden relative ring-1 ring-black/5 dark:ring-white/10 transition-colors duration-300">
+        
+        <!-- Sidebar / Calendar Section -->
+        <div class="w-full md:w-[380px] bg-[#FAFAFA] dark:bg-[#121212] border-r border-ios-separator/30 dark:border-white/10 flex flex-col p-6 md:p-8 relative z-10">
+            <!-- Header -->
+            <div class="mb-8">
+                <div class="flex justify-between items-start">
+                    <h1 class="text-3xl font-bold tracking-tight text-black dark:text-white mb-1">Schedule</h1>
+                    <!-- Dark Mode Toggle -->
+                    <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                        <i data-lucide="moon" class="w-5 h-5 dark:hidden block"></i>
+                        <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-white"></i>
+                    </button>
+                </div>
+                <p class="text-ios-subtext text-sm font-medium" id="current-full-date">Loading...</p>
+            </div>
+
+            <!-- Calendar Navigation -->
+            <div class="flex items-center justify-between mb-6">
+                <button id="prev-month" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-black dark:text-white">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <h2 id="calendar-month-year" class="text-lg font-medium text-black dark:text-white"></h2>
+                <button id="next-month" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-black dark:text-white">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="grid grid-cols-7 gap-2 mb-2 text-center">
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Su</span>
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Mo</span>
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Tu</span>
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">We</span>
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Th</span>
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Fr</span>
+                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Sa</span>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-sm font-medium flex-grow content-start">
+                <!-- Days injected by JS -->
+            </div>
+            
+            <!-- Quick Stats & Settings -->
+            <div class="mt-auto pt-6 border-t border-black/5 dark:border-white/10 space-y-4">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-ios-subtext">Pending Tasks</span>
+                    <span class="font-semibold bg-black dark:bg-white text-white dark:text-black px-2 py-0.5 rounded-full text-xs" id="pending-count">0</span>
+                </div>
+                
+                <!-- Smart Reminders Toggle -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                         <i data-lucide="bell-ring" class="w-4 h-4 text-ios-subtext"></i>
+                        <span class="text-sm font-medium text-black dark:text-white">Smart Reminders</span>
+                    </div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="smart-reminders-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 dark:border-gray-600 left-0"/>
+                        <label for="smart-reminders-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content / Day View -->
+        <div class="flex-1 flex flex-col bg-white dark:bg-ios-dark-card relative transition-colors duration-300" id="main-content-area">
+            
+            <!-- Top Bar -->
+            <div class="h-20 border-b border-black/5 dark:border-white/10 flex items-center justify-between px-8 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-md sticky top-0 z-20">
+                <div class="flex items-center gap-6">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-black dark:text-white" id="selected-date-display">Today</h2>
+                        <p class="text-xs text-ios-subtext font-medium mt-0.5">Timeline • Ctrl+Scroll to Zoom</p>
+                    </div>
+                </div>
+
+                <button onclick="openAddTaskModal()" class="group flex items-center gap-2 bg-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/90 text-white dark:text-black px-5 py-2.5 rounded-full transition-all shadow-lg shadow-black/20 dark:shadow-white/10 active:scale-95">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span class="text-sm font-medium">New Task</span>
+                </button>
+            </div>
+
+            <!-- Tasks List -->
+            <div class="flex-1 overflow-y-auto p-8" id="tasks-container">
+                <!-- Tasks injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-white dark:bg-[#2C2C2E] w-full max-w-lg rounded-[2rem] shadow-2xl p-0 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                <h3 class="text-lg font-semibold text-black dark:text-white">New Event</h3>
+                <button onclick="closeAddTaskModal()" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-black dark:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                
+                <!-- Title & Notes -->
+                <div class="space-y-4">
+                    <input type="text" id="task-title" required class="w-full bg-[#F2F2F7] dark:bg-black/20 border-none rounded-xl px-4 py-3 text-lg font-medium text-black dark:text-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 outline-none placeholder-gray-400" placeholder="Title">
+                    
+                    <textarea id="task-notes" rows="2" class="w-full bg-[#F2F2F7] dark:bg-black/20 border-none rounded-xl px-4 py-3 text-sm text-black dark:text-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 outline-none placeholder-gray-400 resize-none" placeholder="Add notes..."></textarea>
+                </div>
+
+                <!-- Time Pickers (Scroll Wheel Style) -->
+                <div class="bg-[#F2F2F7] dark:bg-black/20 rounded-2xl p-4">
+                    <div class="flex justify-between text-xs font-semibold text-ios-subtext uppercase tracking-wider mb-2 px-2">
+                        <span class="w-1/2 text-center">Start Time</span>
+                        <span class="w-1/2 text-center">End Time</span>
+                    </div>
+                    <div class="flex gap-4">
+                        <!-- Start Time Wheels -->
+                        <div class="flex-1 flex bg-white dark:bg-white/5 rounded-xl overflow-hidden relative h-[120px]">
+                            <div class="wheel-highlight"></div>
+                            <div id="start-hour-wheel" class="wheel-container flex-1 z-10 text-center"></div>
+                            <div id="start-min-wheel" class="wheel-container flex-1 z-10 text-center"></div>
+                            <div id="start-ampm-wheel" class="wheel-container flex-1 z-10 text-center"></div>
+                        </div>
+                        
+                        <!-- Arrow -->
+                        <div class="flex items-center justify-center text-gray-400">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </div>
+
+                        <!-- End Time Wheels -->
+                        <div class="flex-1 flex bg-white dark:bg-white/5 rounded-xl overflow-hidden relative h-[120px]">
+                            <div class="wheel-highlight"></div>
+                            <div id="end-hour-wheel" class="wheel-container flex-1 z-10 text-center"></div>
+                            <div id="end-min-wheel" class="wheel-container flex-1 z-10 text-center"></div>
+                            <div id="end-ampm-wheel" class="wheel-container flex-1 z-10 text-center"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Picker -->
+                <div>
+                    <label class="block text-xs font-semibold text-ios-subtext uppercase tracking-wider mb-2">Color Tag</label>
+                    <div class="flex items-center gap-3 overflow-x-auto pb-2">
+                        <!-- Presets -->
+                        <button type="button" onclick="selectColor('#007AFF')" class="color-btn w-8 h-8 rounded-full bg-[#007AFF] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
+                        <button type="button" onclick="selectColor('#FF3B30')" class="color-btn w-8 h-8 rounded-full bg-[#FF3B30] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
+                        <button type="button" onclick="selectColor('#34C759')" class="color-btn w-8 h-8 rounded-full bg-[#34C759] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
+                        <button type="button" onclick="selectColor('#AF52DE')" class="color-btn w-8 h-8 rounded-full bg-[#AF52DE] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
+                        <button type="button" onclick="selectColor('#FF9500')" class="color-btn w-8 h-8 rounded-full bg-[#FF9500] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
+                        <button type="button" onclick="selectColor('#5856D6')" class="color-btn w-8 h-8 rounded-full bg-[#5856D6] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
+                        
+                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                        
+                        <!-- Custom -->
+                        <div class="relative group">
+                            <input type="color" id="custom-color-input" class="w-8 h-8 rounded-full overflow-hidden border-0 p-0 cursor-pointer" oninput="selectColor(this.value)">
+                            <div class="absolute inset-0 rounded-full ring-1 ring-inset ring-black/10 pointer-events-none"></div>
+                        </div>
+                        <input type="hidden" id="selected-color-value" value="#000000">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-6 pt-0">
+                <button onclick="handleAddTask()" class="w-full bg-black dark:bg-white text-white dark:text-black font-medium py-4 rounded-2xl shadow-lg shadow-black/10 dark:shadow-white/5 hover:shadow-black/20 active:scale-[0.98] transition-all text-lg flex items-center justify-center gap-2">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                    Add to Schedule
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="task-template">
+        <div class="group flex gap-4 mb-6 fade-in task-card-wrapper">
+            <div class="flex flex-col items-center pt-1 flex-shrink-0 task-time-col">
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 task-start-time"></span>
+                <div class="h-8 w-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+                <span class="text-xs font-medium text-gray-400 dark:text-gray-500 task-end-time"></span>
+            </div>
+            <div class="flex-1 bg-white dark:bg-[#2C2C2E] border border-gray-100 dark:border-white/5 rounded-2xl shadow-sm hover:shadow-md transition-all group-hover:border-gray-200 dark:group-hover:border-white/10 relative overflow-hidden task-card-inner">
+                <div class="absolute left-0 top-0 bottom-0 w-1.5 task-color-bar"></div>
+                
+                <div class="flex items-start justify-between pl-2">
+                    <div class="flex items-start gap-4 flex-1">
+                        <div class="pt-1">
+                            <input type="checkbox" class="task-checkbox w-5 h-5 rounded-md border-gray-300 dark:border-gray-600 text-black dark:text-white focus:ring-black dark:focus:ring-white cursor-pointer accent-black dark:accent-white bg-transparent">
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-black dark:text-white text-lg leading-tight task-title transition-colors"></h4>
+                            
+                            <!-- Notes Section -->
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed task-notes hidden"></p>
+
+                            <!-- Progress Bar for active tasks -->
+                            <div class="progress-container hidden mt-3 w-full max-w-[200px] h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div class="progress-bar h-full bg-black dark:bg-white transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="delete-btn opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                        <i data-lucide="trash-2" class="task-icon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        // --- Sound System ---
+        const SoundSystem = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playBeep: function() {
+                if (!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            },
+            playBell: function() {
+                if (!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 1.5);
+            }
+        };
+
+        // --- State ---
+        const state = {
+            today: new Date(),
+            currentMonth: new Date(),
+            selectedDate: new Date(),
+            tasks: JSON.parse(localStorage.getItem('planner_tasks')) || {},
+            smartReminders: JSON.parse(localStorage.getItem('planner_reminders_enabled')) || false,
+            darkMode: JSON.parse(localStorage.getItem('planner_dark_mode')) || false,
+            tempTime: {
+                startHour: 9, startMin: 0, startAmPm: 'AM',
+                endHour: 10, endMin: 0, endAmPm: 'AM'
+            }
+        };
+
+        // --- Utils ---
+        const formatDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const saveTasks = () => {
+            localStorage.setItem('planner_tasks', JSON.stringify(state.tasks));
+            updatePendingCount();
+        };
+        const updatePendingCount = () => {
+            const todayKey = formatDateKey(new Date());
+            const tasks = state.tasks[todayKey] || [];
+            document.getElementById('pending-count').textContent = tasks.filter(t => !t.completed).length;
+        };
+
+        // --- Dark Mode ---
+        function toggleDarkMode() {
+            state.darkMode = !state.darkMode;
+            localStorage.setItem('planner_dark_mode', state.darkMode);
+            applyTheme();
+        }
+        function applyTheme() {
+            if (state.darkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        // --- Smart Reminders ---
+        function toggleSmartReminders(e) {
+            state.smartReminders = e.target.checked;
+            localStorage.setItem('planner_reminders_enabled', state.smartReminders);
+            if (state.smartReminders) {
+                SoundSystem.init();
+                if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                    Notification.requestPermission();
+                }
+            }
+        }
+
+        // --- Wheel Picker Logic ---
+        function createWheel(elementId, items, initialValue, onChange) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+            
+            // Padding items using DIVS instead of CSS padding to fix alignment
+            const spacerTop = document.createElement('div');
+            spacerTop.className = "wheel-item pointer-events-none opacity-0";
+            container.appendChild(spacerTop);
+
+            items.forEach((itemVal) => {
+                const div = document.createElement('div');
+                div.className = `wheel-item ${itemVal == initialValue ? 'active' : ''}`;
+                div.textContent = String(itemVal).padStart(2, '0');
+                div.onclick = () => {
+                    const idx = items.indexOf(itemVal);
+                    container.scrollTo({ top: idx * 40, behavior: 'smooth' });
+                };
+                container.appendChild(div);
+            });
+            
+            // Bottom Padding
+            const spacerBottom = document.createElement('div');
+            spacerBottom.className = "wheel-item pointer-events-none opacity-0";
+            container.appendChild(spacerBottom);
+            // Extra spacer for good measure to ensure scrolling works fully
+            container.appendChild(spacerBottom.cloneNode());
+
+            // --- Scroll Snap Logic ---
+            let timeout;
+            container.addEventListener('scroll', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    const index = Math.round(container.scrollTop / 40);
+                    const wheelItems = container.querySelectorAll('.wheel-item:not(.pointer-events-none)');
+                    
+                    wheelItems.forEach(item => item.classList.remove('active'));
+                    
+                    if(wheelItems[index]) {
+                        wheelItems[index].classList.add('active');
+                        let val = wheelItems[index].textContent;
+                        if(!isNaN(parseInt(val))) val = parseInt(val);
+                        onChange(val);
+                    }
+                }, 50);
+            });
+
+            // --- Drag Logic ---
+            let isDown = false;
+            let startY;
+            let scrollTop;
+
+            container.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startY = e.pageY - container.offsetTop;
+                scrollTop = container.scrollTop;
+                container.classList.add('cursor-grabbing');
+            });
+            container.addEventListener('mouseleave', () => {
+                isDown = false;
+                container.classList.remove('cursor-grabbing');
+            });
+            container.addEventListener('mouseup', () => {
+                isDown = false;
+                container.classList.remove('cursor-grabbing');
+            });
+            container.addEventListener('mousemove', (e) => {
+                if(!isDown) return;
+                e.preventDefault();
+                const y = e.pageY - container.offsetTop;
+                const walk = (y - startY) * 2; // Scroll-fast
+                container.scrollTop = scrollTop - walk;
+            });
+
+            // Touch support for dragging
+            container.addEventListener('touchstart', (e) => {
+                isDown = true;
+                startY = e.touches[0].pageY - container.offsetTop;
+                scrollTop = container.scrollTop;
+            });
+            container.addEventListener('touchend', () => isDown = false);
+            container.addEventListener('touchmove', (e) => {
+                if(!isDown) return;
+                const y = e.touches[0].pageY - container.offsetTop;
+                const walk = (y - startY) * 2; 
+                container.scrollTop = scrollTop - walk;
+            });
+
+
+            // Initial Scroll
+            setTimeout(() => {
+                const idx = items.indexOf(initialValue);
+                if(idx !== -1) container.scrollTop = idx * 40;
+            }, 100);
+        }
+
+        function initTimePickers() {
+            const now = new Date();
+            let h = now.getHours();
+            const m = Math.floor(now.getMinutes() / 5) * 5;
+            
+            state.tempTime.startAmPm = h >= 12 ? 'PM' : 'AM';
+            state.tempTime.startHour = h % 12 || 12;
+            state.tempTime.startMin = m;
+
+            let nextH = h + 1;
+            state.tempTime.endAmPm = nextH >= 24 ? 'AM' : (nextH >= 12 ? 'PM' : 'AM');
+            if(nextH >= 24) nextH -= 24;
+            state.tempTime.endHour = nextH % 12 || 12;
+            state.tempTime.endMin = m;
+
+            const hours = [1,2,3,4,5,6,7,8,9,10,11,12];
+            const mins = Array.from({length: 60}, (_, i) => i);
+            const ampm = ['AM', 'PM'];
+
+            createWheel('start-hour-wheel', hours, state.tempTime.startHour, (v) => state.tempTime.startHour = v);
+            createWheel('start-min-wheel', mins, state.tempTime.startMin, (v) => state.tempTime.startMin = v);
+            createWheel('start-ampm-wheel', ampm, state.tempTime.startAmPm, (v) => state.tempTime.startAmPm = v);
+
+            createWheel('end-hour-wheel', hours, state.tempTime.endHour, (v) => state.tempTime.endHour = v);
+            createWheel('end-min-wheel', mins, state.tempTime.endMin, (v) => state.tempTime.endMin = v);
+            createWheel('end-ampm-wheel', ampm, state.tempTime.endAmPm, (v) => state.tempTime.endAmPm = v);
+        }
+
+        // --- Color Picker ---
+        function selectColor(color) {
+            document.getElementById('selected-color-value').value = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                if(btn.onclick.toString().includes(color)) {
+                    btn.classList.add('ring-gray-400', 'dark:ring-white');
+                    btn.classList.remove('ring-transparent');
+                } else {
+                    btn.classList.remove('ring-gray-400', 'dark:ring-white');
+                    btn.classList.add('ring-transparent');
+                }
+            });
+        }
+
+        // --- Rendering ---
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            const year = state.currentMonth.getFullYear();
+            const month = state.currentMonth.getMonth();
+            document.getElementById('calendar-month-year').textContent = state.currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevMonthDays = new Date(year, month, 0).getDate();
+
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const d = document.createElement('div');
+                d.className = 'h-10 w-10 flex items-center justify-center text-gray-300 dark:text-gray-700 text-sm cursor-default';
+                d.textContent = prevMonthDays - i;
+                grid.appendChild(d);
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const btn = document.createElement('button');
+                const date = new Date(year, month, i);
+                const dateKey = formatDateKey(date);
+                const isSelected = formatDateKey(state.selectedDate) === dateKey;
+                const isToday = formatDateKey(state.today) === dateKey;
+                const hasTasks = state.tasks[dateKey] && state.tasks[dateKey].length > 0;
+
+                let cls = 'day-cell h-10 w-10 flex flex-col items-center justify-center text-sm rounded-full relative ';
+                if (isSelected) cls += 'bg-black dark:bg-white text-white dark:text-black shadow-lg font-bold';
+                else if (isToday) cls += 'text-ios-blue font-bold bg-blue-50 dark:bg-blue-900/20';
+                else cls += 'text-black dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10';
+
+                btn.className = cls;
+                btn.innerHTML = `<span>${i}</span>${hasTasks && !isSelected ? `<span class="w-1 h-1 rounded-full bg-black/40 dark:bg-white/40 mt-0.5"></span>` : ''}`;
+                btn.onclick = () => {
+                    state.selectedDate = date;
+                    renderCalendar();
+                    renderTasks();
+                };
+                grid.appendChild(btn);
+            }
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('tasks-container');
+            const dateKey = formatDateKey(state.selectedDate);
+            const tasks = state.tasks[dateKey] || [];
+            
+            tasks.sort((a, b) => a.startTime.localeCompare(b.startTime));
+            
+            document.getElementById('selected-date-display').textContent = 
+                dateKey === formatDateKey(new Date()) ? 'Today' : state.selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+            container.innerHTML = '';
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-ios-subtext opacity-60 fade-in">
+                        <i data-lucide="calendar-check" class="w-12 h-12 mb-4 stroke-1"></i>
+                        <p>No events scheduled</p>
+                    </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            const tmpl = document.getElementById('task-template');
+            tasks.forEach((task, idx) => {
+                const clone = tmpl.content.cloneNode(true);
+                
+                clone.querySelector('.task-start-time').textContent = task.startTime;
+                clone.querySelector('.task-end-time').textContent = task.endTime;
+                clone.querySelector('.task-title').textContent = task.title;
+                
+                if (task.notes) {
+                    const noteEl = clone.querySelector('.task-notes');
+                    noteEl.textContent = task.notes;
+                    noteEl.classList.remove('hidden');
+                }
+
+                clone.querySelector('.task-color-bar').style.backgroundColor = task.color;
+
+                const cb = clone.querySelector('.task-checkbox');
+                cb.checked = task.completed;
+                cb.onchange = () => {
+                    task.completed = cb.checked;
+                    saveTasks();
+                    renderTasks();
+                };
+
+                clone.querySelector('.delete-btn').onclick = () => {
+                    state.tasks[dateKey].splice(idx, 1);
+                    if(state.tasks[dateKey].length===0) delete state.tasks[dateKey];
+                    saveTasks();
+                    renderTasks();
+                    renderCalendar();
+                };
+
+                if (task.completed) {
+                     clone.querySelector('.task-title').classList.add('line-through', 'text-gray-400', 'dark:text-gray-600');
+                }
+
+                container.appendChild(clone);
+            });
+            lucide.createIcons();
+        }
+
+        function get24hTime(h, m, ampm) {
+            let hour = parseInt(h);
+            if (ampm === 'PM' && hour !== 12) hour += 12;
+            if (ampm === 'AM' && hour === 12) hour = 0;
+            return `${String(hour).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        }
+
+        function handleAddTask() {
+            const title = document.getElementById('task-title').value;
+            if(!title) return;
+
+            const notes = document.getElementById('task-notes').value;
+            const color = document.getElementById('selected-color-value').value;
+            
+            const startTime = get24hTime(state.tempTime.startHour, state.tempTime.startMin, state.tempTime.startAmPm);
+            const endTime = get24hTime(state.tempTime.endHour, state.tempTime.endMin, state.tempTime.endAmPm);
+
+            const dateKey = formatDateKey(state.selectedDate);
+            if (!state.tasks[dateKey]) state.tasks[dateKey] = [];
+
+            state.tasks[dateKey].push({
+                id: Date.now(),
+                title, notes, color,
+                startTime, endTime,
+                completed: false,
+                notified25: false, notified50: false, notified75: false, notifiedStart: false, notifiedEnd: false
+            });
+
+            saveTasks();
+            closeAddTaskModal();
+            renderTasks();
+            renderCalendar();
+        }
+
+        // --- Modals ---
+        function openAddTaskModal() {
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            overlay.classList.remove('hidden');
+            
+            document.getElementById('task-title').value = '';
+            document.getElementById('task-notes').value = '';
+            selectColor('#007AFF');
+            initTimePickers();
+
+            requestAnimationFrame(() => {
+                overlay.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            });
+        }
+
+        function closeAddTaskModal() {
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            overlay.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+
+        // --- Notifications Loop ---
+        setInterval(() => {
+            if(!state.smartReminders) return;
+
+            const now = new Date();
+            const dateKey = formatDateKey(now);
+            const tasks = state.tasks[dateKey] || [];
+            
+            tasks.forEach(task => {
+                if(task.completed) return;
+                
+                const [sH, sM] = task.startTime.split(':').map(Number);
+                const [eH, eM] = task.endTime.split(':').map(Number);
+                
+                const start = new Date(now); start.setHours(sH, sM, 0, 0);
+                const end = new Date(now); end.setHours(eH, eM, 0, 0);
+                
+                const duration = end - start;
+                const elapsed = now - start;
+                const progress = elapsed / duration;
+
+                if(now >= start && elapsed < 5000 && !task.notifiedStart) {
+                    SoundSystem.playBell();
+                    notify(`Starting: ${task.title}`, task.notes || "Time to focus.");
+                    task.notifiedStart = true; saveTasks();
+                }
+                if(progress > 0.25 && progress < 0.3 && !task.notified25) {
+                     SoundSystem.playBeep(); notify("25% Complete", task.title); task.notified25 = true; saveTasks();
+                }
+                if(progress > 0.5 && progress < 0.55 && !task.notified50) {
+                     SoundSystem.playBeep(); notify("Halfway There", task.title); task.notified50 = true; saveTasks();
+                }
+                if(now >= end && !task.notifiedEnd) {
+                    SoundSystem.playBell();
+                    notify("Time's Up", `${task.title} should be finished.`);
+                    task.notifiedEnd = true; saveTasks();
+                }
+            });
+        }, 5000);
+
+        function notify(title, body) {
+            const area = document.getElementById('notification-area');
+            const el = document.createElement('div');
+            el.className = 'bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-gray-200 dark:border-white/10 text-black dark:text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 transform transition-all duration-300 translate-y-full opacity-0 pointer-events-auto min-w-[280px]';
+            el.innerHTML = `<div class="bg-black dark:bg-white text-white dark:text-black p-1.5 rounded-full"><i data-lucide="bell" class="w-3 h-3"></i></div><div><p class="text-sm font-bold">${title}</p><p class="text-xs opacity-80">${body}</p></div>`;
+            area.appendChild(el);
+            lucide.createIcons();
+            requestAnimationFrame(() => el.classList.remove('translate-y-full', 'opacity-0'));
+            setTimeout(() => { el.classList.add('translate-y-2', 'opacity-0'); setTimeout(()=>el.remove(), 300); }, 4000);
+
+            if(document.hidden && Notification.permission === "granted") new Notification(title, { body });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+            const toggle = document.getElementById('smart-reminders-toggle');
+            toggle.checked = state.smartReminders;
+            toggle.addEventListener('change', toggleSmartReminders);
+
+            document.getElementById('prev-month').onclick = () => { state.currentMonth.setMonth(state.currentMonth.getMonth()-1); renderCalendar(); };
+            document.getElementById('next-month').onclick = () => { state.currentMonth.setMonth(state.currentMonth.getMonth()+1); renderCalendar(); };
+
+            document.getElementById('tasks-container').addEventListener('wheel', (e) => {
+                if(e.ctrlKey) {
+                    e.preventDefault();
+                    let s = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--zoom-scale')) || 1;
+                    if(e.deltaY < 0) s += 0.1; else s -= 0.1;
+                    s = Math.min(Math.max(0.6, s), 1.5);
+                    document.documentElement.style.setProperty('--zoom-scale', s);
+                }
+            }, { passive: false });
+
+            renderCalendar();
+            renderTasks();
+            updatePendingCount();
+            lucide.createIcons();
+        });
+
+    </script>
+</body>
+</html>
