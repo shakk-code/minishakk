@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minicraft</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'VT323', monospace;
+            user-select: none;
+            background-color: #1a1a1a;
+        }
+        
+        /* UI Common */
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .scroll-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #a0a0a0;
+            width: 500px;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+        
+        .scroll-list::-webkit-scrollbar { width: 10px; }
+        .scroll-list::-webkit-scrollbar-track { background: #333; }
+        .scroll-list::-webkit-scrollbar-thumb { background: #888; border: 1px solid #000; }
+
+        .world-item {
+            background: rgba(0,0,0,0.6);
+            padding: 10px;
+            margin-bottom: 5px;
+            border: 1px solid #555;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .world-item:hover { background: rgba(100,100,100,0.6); border-color: #fff; }
+        .world-item.selected { border: 2px solid #ffff55; background: rgba(100,100,255,0.4); }
+
+        input[type="text"] {
+            font-family: 'VT323', monospace;
+            font-size: 24px;
+            padding: 10px;
+            width: 400px;
+            background: #333;
+            color: white;
+            border: 2px solid #a0a0a0;
+            margin-bottom: 20px;
+        }
+
+        /* Backgrounds */
+        #main-menu, #world-select, #create-world, #delete-modal {
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1597850762724-2c71798a48a9?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            z-index: 20;
+        }
+        
+        #loading-screen {
+            background: #1a1a1a;
+            z-index: 100;
+        }
+        
+        #delete-modal {
+            background: rgba(0,0,0,0.85) !important; /* Dark overlay */
+            z-index: 50;
+        }
+
+        .title {
+            font-size: 100px;
+            color: #dcdcdc;
+            text-shadow: 4px 4px 0 #3f3f3f;
+            margin-bottom: 20px;
+            letter-spacing: -2px;
+        }
+
+        .menu-btn {
+            width: 400px;
+            padding: 12px;
+            margin: 8px;
+            background-color: #727272;
+            border: 2px solid #000;
+            border-top: 2px solid #a0a0a0;
+            border-left: 2px solid #a0a0a0;
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: inset -2px -2px 0 #3f3f3f;
+        }
+        .menu-btn:hover { background-color: #858585; color: #ffffa0; }
+        .menu-btn.disabled { color: #555; cursor: default; background-color: #444; }
+        .menu-btn:active:not(.disabled) {
+            border: 2px solid #000;
+            border-bottom: 2px solid #a0a0a0;
+            border-right: 2px solid #a0a0a0;
+            box-shadow: inset 2px 2px 0 #3f3f3f;
+            transform: translateY(2px);
+        }
+        
+        .menu-btn.danger { background-color: #a03535; }
+        .menu-btn.danger:hover { background-color: #c04545; }
+
+        /* Settings Panel */
+        #settings-panel { background-color: rgba(0,0,0,0.85); z-index: 30; }
+        .settings-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+            width: 600px; margin-bottom: 20px;
+        }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; font-size: 22px; }
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        input[type=range] { width: 150px; cursor: pointer; }
+
+        /* HUD */
+        #ui-container { pointer-events: none; z-index: 5; display: none; }
+        
+        /* Improved Inverted Crosshair */
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 24px; height: 24px;
+            background: white;
+            mix-blend-mode: difference;
+            clip-path: polygon(
+                10px 0, 14px 0, 14px 10px, 24px 10px, 
+                24px 14px, 14px 14px, 14px 24px, 10px 24px, 
+                10px 14px, 0 14px, 0 10px, 10px 10px
+            );
+        }
+
+        #hotbar {
+            position: absolute; bottom: 20px; display: flex; gap: 10px;
+            background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 10px;
+            pointer-events: auto; 
+        }
+        .slot {
+            width: 40px; height: 40px; border: 3px solid #555; border-radius: 4px;
+            cursor: pointer; transition: transform 0.1s;
+            background-color: transparent;
+            background-size: 80%;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+        }
+        .slot.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px white; background-color: rgba(255,255,255,0.1); }
+
+        #pause-menu { background-color: rgba(0,0,0,0.65); }
+        #debug-info {
+            position: absolute; top: 10px; left: 10px;
+            color: #ddd; font-size: 16px; text-shadow: 1px 1px 0 #000;
+        }
+        #auto-save-text {
+            position: absolute; top: 10px; right: 10px;
+            color: #ffff55; font-size: 18px; display: none;
+            text-shadow: 1px 1px 0 #000;
+        }
+        #spectator-hint {
+            position: absolute; top: 100px; width: 100%; text-align: center;
+            color: #ffff55; font-size: 24px; text-shadow: 2px 2px 0 #000; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="ui-layer" style="display: flex;">
+        <div class="title">MINICRAFT</div>
+        <div class="menu-btn" id="btn-play">Singleplayer</div>
+        <div class="menu-btn" id="btn-options-main">Options</div>
+        <div class="menu-btn" onclick="window.close()">Quit Game</div>
+    </div>
+
+    <!-- World Selection -->
+    <div id="world-select" class="ui-layer">
+        <div class="title" style="font-size: 60px;">SELECT WORLD</div>
+        <div class="scroll-list" id="world-list"></div>
+        <div style="display: flex; gap: 10px;">
+            <div class="menu-btn" id="btn-play-selected" style="width: 195px;">Play Selected</div>
+            <div class="menu-btn" id="btn-create-menu" style="width: 195px;">Create New</div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="menu-btn" id="btn-delete-init" style="width: 195px;">Delete</div>
+            <div class="menu-btn" id="btn-back-main" style="width: 195px;">Cancel</div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="delete-modal" class="ui-layer">
+        <div class="title" style="font-size: 50px; color: #ff5555;">DELETE WORLD?</div>
+        <div style="font-size: 24px; margin-bottom: 20px;">This cannot be undone!</div>
+        <div class="menu-btn danger" id="btn-delete-confirm">Yes, Delete It</div>
+        <div class="menu-btn" id="btn-delete-cancel">Cancel</div>
+    </div>
+
+    <!-- Create World -->
+    <div id="create-world" class="ui-layer">
+        <div class="title" style="font-size: 60px;">CREATE NEW WORLD</div>
+        <span>World Name</span>
+        <input type="text" id="inp-world-name" value="New World" maxlength="20">
+        <span>Seed (Optional)</span>
+        <input type="text" id="inp-world-seed" placeholder="Leave blank for random">
+        <div class="menu-btn" id="btn-create-confirm">Create New World</div>
+        <div class="menu-btn" id="btn-back-select">Cancel</div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="ui-layer">
+        <div class="title" style="font-size: 60px;">LOADING...</div>
+        <div id="loading-text" style="font-size: 24px; color: #aaa;">Generating Terrain...</div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel" class="ui-layer">
+        <div class="title" style="font-size: 50px;">OPTIONS</div>
+        <div class="settings-grid">
+            <div class="setting-item">
+                <span>Render Distance</span>
+                <div class="slider-container"><input type="range" id="opt-render" min="2" max="6" value="3"><span id="val-render">3</span></div>
+            </div>
+            <div class="setting-item">
+                <span>Field of View</span>
+                <div class="slider-container"><input type="range" id="opt-fov" min="60" max="110" value="75"><span id="val-fov">75</span></div>
+            </div>
+            <div class="setting-item">
+                <span>Clouds</span>
+                <div class="menu-btn" style="width: 100px; padding: 5px; font-size: 18px;" id="opt-clouds">ON</div>
+            </div>
+            <div class="setting-item">
+                <span>Shadows</span>
+                <div class="menu-btn" style="width: 100px; padding: 5px; font-size: 18px;" id="opt-shadows">ON</div>
+            </div>
+            <div class="setting-item">
+                <span>SFX Volume</span>
+                <input type="range" id="opt-vol-sfx" min="0" max="100" value="50">
+            </div>
+            <div class="setting-item">
+                <span>Ambience Volume</span>
+                <input type="range" id="opt-vol-amb" min="0" max="100" value="10">
+            </div>
+        </div>
+        <div class="menu-btn" id="btn-back-settings">Done</div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu" class="ui-layer">
+        <div class="title" style="font-size: 50px;">GAME PAUSED</div>
+        <div class="menu-btn" id="btn-resume">Back to Game</div>
+        <div class="menu-btn" id="btn-options-pause">Options</div>
+        <div class="menu-btn" id="btn-quit">Save and Quit to Title</div>
+    </div>
+
+    <!-- HUD -->
+    <div id="ui-container" class="ui-layer">
+        <div id="debug-info"></div>
+        <div id="auto-save-text">Saving...</div>
+        <div id="spectator-hint">SPECTATOR MODE</div>
+        <div id="crosshair"></div>
+        <div id="hotbar">
+            <div class="slot active" data-type="1"></div>
+            <div class="slot" data-type="2"></div>
+            <div class="slot" data-type="3"></div>
+            <div class="slot" data-type="4"></div>
+            <div class="slot" data-type="5"></div>
+            <div class="slot" data-type="6"></div>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- 0. AUDIO SYSTEM (PROCEDURAL) ---
+        const AudioSys = {
+            ctx: null, sfxGain: null, ambGain: null, windNode: null, footBuffer: null,
+            init: function() {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.sfxGain = this.ctx.createGain();
+                this.sfxGain.connect(this.ctx.destination);
+                this.ambGain = this.ctx.createGain();
+                this.ambGain.connect(this.ctx.destination);
+                this.createFootstepBuffer();
+                this.startWind();
+                this.setVolumes(SETTINGS.volSfx, SETTINGS.volAmb);
+                this.stopWind();
+            },
+            createFootstepBuffer: function() {
+                const bufferSize = this.ctx.sampleRate * 0.1; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2); 
+                }
+                this.footBuffer = buffer;
+            },
+            setVolumes: function(sfxVol, ambVol) {
+                if(this.sfxGain) this.sfxGain.gain.value = sfxVol / 100;
+                if(this.ambGain) this.ambGain.gain.value = ambVol / 100;
+            },
+            startWind: function() {
+                const bufferSize = 2 * this.ctx.sampleRate;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = (lastOut + (0.02 * white)) / 1.02; 
+                    lastOut = data[i]; data[i] *= 3.5; 
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer; noise.loop = true;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass'; filter.frequency.value = 400;
+                noise.connect(filter); filter.connect(this.ambGain);
+                noise.start(0); this.windNode = filter;
+                this.ctx.suspend(); 
+            },
+            resume: function() { if(this.ctx.state === 'suspended') this.ctx.resume(); },
+            stopWind: function() { if(this.ctx.state === 'running') this.ctx.suspend(); },
+            playFootstep: function() {
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+                if(!this.footBuffer) return;
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.footBuffer;
+                src.playbackRate.value = 0.8 + Math.random() * 0.4;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass'; filter.frequency.value = 800;
+                src.connect(filter); filter.connect(this.sfxGain);
+                src.start();
+            }
+        };
+
+        // --- 1. SEED & MATH UTILS ---
+        let CURRENT_SEED = 12345;
+        function mulberry32(a) {
+            return function() {
+                var t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+        let rng = mulberry32(CURRENT_SEED);
+        
+        const Perlin = (function() {
+            const permutation = new Uint8Array(512);
+            const p = new Uint8Array(256);
+            function init(seed) {
+                const r = mulberry32(seed);
+                for(let i=0; i<256; i++) p[i] = Math.floor(r() * 256);
+                for(let i=0; i<512; i++) permutation[i] = p[i & 255];
+            }
+            init(CURRENT_SEED); 
+            function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+            function lerp(t, a, b) { return a + t * (b - a); }
+            function grad(hash, x, y, z) {
+                const h = hash & 15; const u = h < 8 ? x : y; const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+            return {
+                setSeed: init,
+                noise: function(x, y, z) {
+                    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+                    x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+                    const u = fade(x), v = fade(y), w = fade(z);
+                    const A = permutation[X] + Y, AA = permutation[A] + Z, AB = permutation[A + 1] + Z;
+                    const B = permutation[X + 1] + Y, BA = permutation[B] + Z, BB = permutation[B + 1] + Z;
+                    return lerp(w, lerp(v, lerp(u, grad(permutation[AA], x, y, z), grad(permutation[BA], x-1, y, z)),
+                        lerp(u, grad(permutation[AB], x, y-1, z), grad(permutation[BB], x-1, y-1, z))),
+                        lerp(v, lerp(u, grad(permutation[AA+1], x, y, z-1), grad(permutation[BA+1], x-1, y, z-1)),
+                        lerp(u, grad(permutation[AB+1], x, y-1, z-1), grad(permutation[BB+1], x-1, y-1, z-1))));
+                }
+            };
+        })();
+
+        // --- 2. CONFIGURATION & STATE ---
+        const CHUNK_SIZE = 16;
+        const MAX_INSTANCES = 1000000; 
+        const PLAYER_HEIGHT = 1.45;
+        const GRAVITY = 25.0;
+        const MIN_WORLD_Y = -50;
+        
+        let SETTINGS = {
+            renderDistance: 3,
+            fov: 75,
+            clouds: true,
+            shadows: true,
+            volSfx: 50,
+            volAmb: 10
+        };
+
+        let currentWorldId = null;
+        let modifiedBlocks = {}; 
+        let camera, scene, renderer, skyMesh, cloudMesh;
+        let dirLight;
+        let controls = { locked: false, moveForward: false, moveBackward: false, moveLeft: false, moveRight: false, jump: false };
+        let raycaster;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let prevTime = performance.now();
+        let stepTimer = 0;
+        
+        // Spectator State
+        let spectatorMode = false;
+        let savedPlayerPos = new THREE.Vector3();
+        
+        // Chunk System
+        let loadedChunks = new Set(); 
+        let worldData = {}; 
+        let chunkBlockMap = {}; 
+        let meshMap = {}; 
+        let instanceIdMap = {}; 
+        let chunkQueue = []; 
+
+        let dummy = new THREE.Object3D();
+        let selectedBlockType = 1; 
+        let materials = {};
+        let blockGeometry;
+        let isGameActive = false;
+        let gameState = 'MAIN';
+        let previousMenu = 'MAIN';
+        let worldToDelete = null; // ID of world waiting for deletion
+
+        // --- 3. STORAGE MANAGER ---
+        const Storage = {
+            getWorlds: function() {
+                const w = localStorage.getItem('minicraft_worlds');
+                return w ? JSON.parse(w) : [];
+            },
+            saveWorldsList: function(list) {
+                localStorage.setItem('minicraft_worlds', JSON.stringify(list));
+            },
+            createWorld: function(name, seedStr) {
+                const list = this.getWorlds();
+                const id = Date.now().toString();
+                let seed = 12345;
+                if(seedStr) {
+                    seed = 0;
+                    for(let i=0; i<seedStr.length; i++) seed = (Math.imul(31, seed) + seedStr.charCodeAt(i)) | 0;
+                } else {
+                    seed = Math.floor(Math.random() * 100000);
+                }
+                const newWorld = { id, name, seed, lastPlayed: Date.now() };
+                list.push(newWorld);
+                this.saveWorldsList(list);
+                return id;
+            },
+            deleteWorld: function(id) {
+                let list = this.getWorlds();
+                list = list.filter(w => w.id !== id);
+                this.saveWorldsList(list);
+                localStorage.removeItem(`minicraft_world_${id}`);
+            },
+            saveChunkData: function() {
+                if(!currentWorldId) return;
+                // If in spectator, save the BODY position, not camera
+                const pos = spectatorMode ? savedPlayerPos : camera.position;
+                const data = {
+                    modified: modifiedBlocks,
+                    player: {
+                        x: pos.x, y: pos.y, z: pos.z,
+                        rx: camera.rotation.x, ry: camera.rotation.y
+                    },
+                    slot: selectedBlockType
+                };
+                localStorage.setItem(`minicraft_world_${currentWorldId}`, JSON.stringify(data));
+                const el = document.getElementById('auto-save-text');
+                el.style.display = 'block';
+                setTimeout(() => el.style.display = 'none', 1000);
+            },
+            loadWorldData: function(id) {
+                const json = localStorage.getItem(`minicraft_world_${id}`);
+                if(json) {
+                    const data = JSON.parse(json);
+                    modifiedBlocks = data.modified || {};
+                    camera.position.set(data.player.x, data.player.y, data.player.z);
+                    camera.rotation.x = data.player.rx;
+                    camera.rotation.y = data.player.ry;
+                    selectedBlockType = data.slot || 1;
+                    updateHotbarUI();
+                } else {
+                    modifiedBlocks = {};
+                    camera.position.set(0, 40, 0); 
+                    camera.rotation.set(0,0,0);
+                }
+            }
+        };
+
+        // --- 4. INITIALIZATION ---
+        // init(); called at the end
+        // animate(); called at the end
+        setInterval(() => { if(isGameActive) Storage.saveChunkData(); }, 30000); 
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); 
+            scene.fog = new THREE.Fog(0x87CEEB, 10, SETTINGS.renderDistance * CHUNK_SIZE - 5);
+
+            camera = new THREE.PerspectiveCamera(SETTINGS.fov, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.rotation.order = 'YXZ'; 
+            
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = SETTINGS.shadows; 
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            initSky();
+            
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+            hemiLight.position.set(0, 200, 0);
+            scene.add(hemiLight);
+
+            dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = SETTINGS.shadows;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            // Increased shadow cam range
+            dirLight.shadow.camera.left = -100; dirLight.shadow.camera.right = 100;
+            dirLight.shadow.camera.top = 100; dirLight.shadow.camera.bottom = -100;
+            scene.add(dirLight);
+
+            blockGeometry = new THREE.BoxGeometry(1, 1, 1);
+            createMaterials();
+            initializeInstancedMeshes();
+            createCloudSystem();
+            
+            generateHotbarIcons();
+
+            raycaster = new THREE.Raycaster();
+            raycaster.far = 8; 
+
+            setupEvents();
+            AudioSys.init();
+            setMenu('MAIN');
+        }
+
+        function generateHotbarIcons() {
+            const colors = {
+                1: ['#417a4b', '#35633d', '#2b5031'], 
+                2: ['#8b5a2b', '#704822', '#59391b'], 
+                3: ['#7a7a7a', '#636363', '#4f4f4f'], 
+                4: ['#a05f35', '#824d2b', '#693e23'], 
+                5: ['#3a5f0b', '#2e4a08', '#223606'], 
+                6: ['#cb4154', '#a83545', '#8a2b39'] 
+            };
+
+            for(let i=1; i<=6; i++) {
+                const url = createIsoIcon(colors[i]);
+                const slots = document.querySelectorAll(`.slot[data-type="${i}"]`);
+                slots.forEach(s => s.style.backgroundImage = `url(${url})`);
+            }
+        }
+
+        function createIsoIcon(palette) {
+            const cv = document.createElement('canvas');
+            cv.width = 64; cv.height = 64;
+            const ctx = cv.getContext('2d');
+            
+            const cx = 32; const cy = 32; const size = 24;
+            
+            ctx.fillStyle = palette[0];
+            ctx.beginPath(); ctx.moveTo(cx, cy - size); ctx.lineTo(cx + size, cy - size/2); ctx.lineTo(cx, cy); ctx.lineTo(cx - size, cy - size/2); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = palette[1];
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + size, cy - size/2); ctx.lineTo(cx + size, cy + size/2 + 4); ctx.lineTo(cx, cy + size + 4); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = palette[2];
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - size, cy - size/2); ctx.lineTo(cx - size, cy + size/2 + 4); ctx.lineTo(cx, cy + size + 4); ctx.closePath(); ctx.fill();
+            
+            return cv.toDataURL();
+        }
+
+        function initSky() {
+            const vertexShader = `varying vec3 vWorldPosition; void main() { vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); vWorldPosition = worldPosition.xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }`;
+            const fragmentShader = `uniform vec3 topColor; uniform vec3 bottomColor; uniform float offset; uniform float exponent; varying vec3 vWorldPosition; void main() { float h = normalize( vWorldPosition + offset ).y; gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 ); }`;
+            const uniforms = { topColor: { value: new THREE.Color(0x0077ff) }, bottomColor: { value: new THREE.Color(0xffffff) }, offset: { value: 33 }, exponent: { value: 0.6 } };
+            const skyGeo = new THREE.SphereGeometry(500, 32, 15);
+            const skyMat = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms, side: THREE.BackSide });
+            skyMesh = new THREE.Mesh(skyGeo, skyMat);
+            scene.add(skyMesh);
+        }
+
+        function createCloudSystem() {
+            const geo = new THREE.BoxGeometry(10, 2, 10);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.8, transparent: true });
+            cloudMesh = new THREE.InstancedMesh(geo, mat, 50);
+            cloudMesh.position.y = 60;
+            const dummy = new THREE.Object3D();
+            for(let i=0; i<50; i++) {
+                dummy.position.set(Math.random()*400 - 200, 0, Math.random()*400 - 200);
+                dummy.updateMatrix();
+                cloudMesh.setMatrixAt(i, dummy.matrix);
+            }
+            scene.add(cloudMesh);
+        }
+
+        function resetWorld() {
+            for (let i = 1; i <= 6; i++) {
+                meshMap[i].count = 0;
+                meshMap[i].instanceMatrix.needsUpdate = true;
+                instanceIdMap[i] = {};
+            }
+            loadedChunks.clear();
+            worldData = {};
+            chunkBlockMap = {}; 
+            chunkQueue = []; 
+            spectatorMode = false; // Reset mode
+            
+            // Reset materials
+            for(let key in materials) {
+                let mat = materials[key];
+                if(Array.isArray(mat)) {
+                    mat.forEach(m => { m.transparent = false; m.opacity = 1.0; m.needsUpdate = true; });
+                } else {
+                    mat.transparent = false; mat.opacity = 1.0; mat.needsUpdate = true;
+                }
+            }
+        }
+
+        function loadSelectedWorld(id, seed) {
+            setMenu('LOADING'); 
+            setTimeout(() => {
+                currentWorldId = id;
+                CURRENT_SEED = seed;
+                rng = mulberry32(seed);
+                Perlin.setSeed(seed);
+                resetWorld();
+                Storage.loadWorldData(id);
+                const px = Math.floor(camera.position.x / CHUNK_SIZE);
+                const pz = Math.floor(camera.position.z / CHUNK_SIZE);
+                // Load center 3x3 immediately
+                for(let x=-1; x<=1; x++){
+                    for(let z=-1; z<=1; z++){
+                        generateChunk(px+x, pz+z);
+                        loadedChunks.add(getChunkKey(px+x, pz+z));
+                    }
+                }
+                setMenu('HUD');
+                requestLock();
+                isGameActive = true; 
+                AudioSys.resume();
+            }, 100);
+        }
+
+        function getChunkKey(cx, cz) { return `${cx},${cz}`; }
+
+        function updateChunks() {
+            const px = Math.floor(camera.position.x / CHUNK_SIZE);
+            const pz = Math.floor(camera.position.z / CHUNK_SIZE);
+            const dist = SETTINGS.renderDistance;
+            let needed = new Set();
+            for (let x = -dist; x <= dist; x++) {
+                for (let z = -dist; z <= dist; z++) {
+                    if (x*x + z*z <= dist*dist) needed.add(getChunkKey(px + x, pz + z));
+                }
+            }
+            for (let key of loadedChunks) { if (!needed.has(key)) unloadChunk(key); }
+            for (let key of needed) {
+                if (!loadedChunks.has(key)) {
+                    if(!chunkQueue.includes(key)) chunkQueue.push(key);
+                }
+            }
+            chunkQueue.sort((a,b) => {
+                const [ax, az] = a.split(',').map(Number);
+                const [bx, bz] = b.split(',').map(Number);
+                return ((ax-px)**2 + (az-pz)**2) - ((bx-px)**2 + (bz-pz)**2);
+            });
+            scene.fog.far = dist * CHUNK_SIZE - 2;
+        }
+
+        function processChunkQueue() {
+            if(chunkQueue.length === 0) return;
+            const key = chunkQueue.shift();
+            if(!loadedChunks.has(key)) {
+                const [cx, cz] = key.split(',').map(Number);
+                generateChunk(cx, cz);
+                loadedChunks.add(key);
+            }
+        }
+
+        // Optimized 2-Pass Generation with Face Culling
+        function generateChunk(cx, cz) {
+            const startX = cx * CHUNK_SIZE;
+            const startZ = cz * CHUNK_SIZE;
+            const offset = 10000; 
+            const scale1 = 0.02; const scale2 = 0.05; const scale3 = 0.1;
+
+            let updatedTypes = new Set();
+            let chunkKey = getChunkKey(cx, cz);
+            chunkBlockMap[chunkKey] = []; 
+
+            // PASS 1: Logic (Calculate Noise & Store Data)
+            // We store data in worldData but mark instanceId as null initially
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                for (let z = 0; z < CHUNK_SIZE; z++) {
+                    const wx = startX + x;
+                    const wz = startZ + z;
+                    
+                    let n1 = Perlin.noise((wx + offset) * scale1, (wz + offset) * scale1, 0); 
+                    let n2 = Perlin.noise((wx + offset) * scale2, (wz + offset) * scale2, 100); 
+                    let n3 = Perlin.noise((wx + offset) * scale3, (wz + offset) * scale3, 200); 
+
+                    let h = Math.floor((n1 * 15) + (n2 * 8) + (n3 * 2) + 10); 
+
+                    for (let y = MIN_WORLD_Y; y <= h; y++) {
+                        let type = 2; 
+                        if (y === h) type = 1; 
+                        else if (y < h - 3) type = 3; 
+                        
+                        if (y === MIN_WORLD_Y) type = 3; // Bedrock
+
+                        if (y < h - 2 && y > MIN_WORLD_Y) { 
+                            let caveNoise = Perlin.noise(wx * 0.06, y * 0.06, wz * 0.06);
+                            if (caveNoise > 0.4) continue; // Air
+                        }
+                        
+                        const mod = modifiedBlocks[`${wx},${y},${wz}`];
+                        if (mod !== undefined) {
+                            if (mod !== 0) setBlockData(wx, y, wz, mod);
+                        } else {
+                            setBlockData(wx, y, wz, type);
+                        }
+                    }
+                    // Trees
+                    let treeDensity = Perlin.noise(wx * 0.1, wz * 0.1, 500); 
+                    let treeRng = (Math.sin(wx * 12.9898 + wz * 78.233) * 43758.5453) % 1; 
+                    if (treeDensity > 0.4 && treeRng < 0.05 && wx > startX + 1 && wx < startX + 15 && wz > startZ + 1 && wz < startZ + 15) {
+                         generateTreeData(wx, h + 1, wz);
+                    }
+                }
+            }
+            // Apply User Mods (additions)
+            for (let key in modifiedBlocks) {
+                if(modifiedBlocks[key] === 0) continue; 
+                const [mx, my, mz] = key.split(',').map(Number);
+                if (mx >= startX && mx < startX + CHUNK_SIZE && mz >= startZ && mz < startZ + CHUNK_SIZE) {
+                    if (!worldData[key]) setBlockData(mx, my, mz, modifiedBlocks[key]);
+                }
+            }
+
+            // PASS 2: Visuals (Face Culling)
+            // Only add instance if block is exposed
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                for (let z = 0; z < CHUNK_SIZE; z++) {
+                    const wx = startX + x;
+                    const wz = startZ + z;
+                    // Scan vertical column
+                    // Optimization: We know min/max Y from logic pass generally, but checking full range is safer for caves
+                    // Scan range from MIN_WORLD_Y to max height + tree height (~40)
+                    for (let y = MIN_WORLD_Y; y <= 40; y++) {
+                        const key = `${wx},${y},${wz}`;
+                        const block = worldData[key];
+                        if (block && block.instanceId === null) {
+                            // Check neighbors
+                            if (isExposed(wx, y, wz)) {
+                                addBlockInstance(wx, y, wz, block.type, cx, cz, updatedTypes);
+                            }
+                        }
+                    }
+                }
+            }
+
+            updatedTypes.forEach(type => {
+                if(meshMap[type]) meshMap[type].instanceMatrix.needsUpdate = true;
+            });
+        }
+
+        function isExposed(x, y, z) {
+            // If any neighbor is missing (air) or transparent (leaves, glass - simpler: just check if exists), render.
+            // For leaves (type 5), we always treat them as transparent-ish, but standard culling usually renders solid blocks against them.
+            // Simple check: If a neighbor doesn't exist in worldData, it's air.
+            // NOTE: Chunk borders always render to prevent holes when next chunk isn't loaded.
+            
+            if (!worldData[`${x+1},${y},${z}`]) return true;
+            if (!worldData[`${x-1},${y},${z}`]) return true;
+            if (!worldData[`${x},${y+1},${z}`]) return true;
+            if (!worldData[`${x},${y-1},${z}`]) return true;
+            if (!worldData[`${x},${y},${z+1}`]) return true;
+            if (!worldData[`${x},${y},${z-1}`]) return true;
+            return false;
+        }
+
+        function setBlockData(x, y, z, type) {
+            worldData[`${x},${y},${z}`] = { type: type, instanceId: null };
+        }
+
+        function generateTreeData(rootX, rootY, rootZ) {
+            if(modifiedBlocks[`${rootX},${rootY},${rootZ}`] === 0) return;
+            const height = 5;
+            for(let i=0; i<height; i++) {
+                if(!modifiedBlocks[`${rootX},${rootY+i},${rootZ}`]) setBlockData(rootX, rootY + i, rootZ, 4);
+            }
+            for(let y = rootY + height - 2; y <= rootY + height + 1; y++) {
+                for(let x = rootX - 2; x <= rootX + 2; x++) {
+                    for(let z = rootZ - 2; z <= rootZ + 2; z++) {
+                        if(x === rootX && z === rootZ && y < rootY + height) continue;
+                        if(modifiedBlocks[`${x},${y},${z}`] !== undefined) continue;
+                        if (Math.abs(x-rootX) + Math.abs(z-rootZ) + Math.abs(y-(rootY+height)) <= 3) { 
+                             setBlockData(x, y, z, 5);
+                        }
+                    }
+                }
+            }
+        }
+
+        function unloadChunk(key) {
+            if (chunkBlockMap[key]) {
+                chunkBlockMap[key].forEach(blockKey => {
+                    const [x, y, z] = blockKey.split(',').map(Number);
+                    removeBlockInstance(x, y, z);
+                    // We KEEP worldData for caching? No, memory leak. Delete data.
+                    delete worldData[blockKey];
+                });
+                delete chunkBlockMap[key];
+            }
+            loadedChunks.delete(key);
+        }
+
+        // --- 6. BLOCK LOGIC (MESH) ---
+        function addBlockInstance(x, y, z, type, cx, cz, updatedSet) {
+            // Assumes data already exists
+            const key = `${x},${y},${z}`;
+            const block = worldData[key];
+            if (!block || block.instanceId !== null) return;
+
+            const mesh = meshMap[type];
+            if (mesh.count >= MAX_INSTANCES) return;
+
+            dummy.position.set(x, y, z);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(mesh.count, dummy.matrix);
+            
+            block.instanceId = mesh.count;
+            instanceIdMap[type][mesh.count] = key;
+            
+            if(cx === undefined) { cx = Math.floor(x / CHUNK_SIZE); cz = Math.floor(z / CHUNK_SIZE); }
+            const chunkKey = getChunkKey(cx, cz);
+            if(chunkBlockMap[chunkKey]) chunkBlockMap[chunkKey].push(key);
+            
+            mesh.count++;
+            if (updatedSet) updatedSet.add(type);
+            else mesh.instanceMatrix.needsUpdate = true;
+        }
+
+        function removeBlockInstance(x, y, z) {
+            const key = `${x},${y},${z}`;
+            const block = worldData[key];
+            if (!block || block.instanceId === null) return;
+
+            const { type, instanceId } = block;
+            const mesh = meshMap[type];
+            
+            if (mesh.count <= 0) return; // Safety Check
+
+            const lastId = mesh.count - 1;
+            const lastKey = instanceIdMap[type][lastId];
+
+            // Move last instance to deleted spot
+            mesh.getMatrixAt(lastId, dummy.matrix);
+            mesh.setMatrixAt(instanceId, dummy.matrix);
+
+            if (lastId !== instanceId) {
+                // Fix: Check if worldData[lastKey] exists before accessing to prevent crash
+                if (lastKey !== undefined && worldData[lastKey]) {
+                    worldData[lastKey].instanceId = instanceId;
+                    instanceIdMap[type][instanceId] = lastKey;
+                }
+            }
+
+            delete instanceIdMap[type][lastId];
+            block.instanceId = null; // Just remove visual, keep data if needed (but unloadChunk deletes data)
+            mesh.count--;
+            mesh.instanceMatrix.needsUpdate = true;
+        }
+
+        // Interaction Logic
+        function breakBlock(x, y, z) {
+            // 1. Remove visual
+            removeBlockInstance(x, y, z);
+            // 2. Remove data
+            delete worldData[`${x},${y},${z}`];
+            modifiedBlocks[`${x},${y},${z}`] = 0; 
+            
+            // 3. UPDATE NEIGHBORS (Reveal hidden blocks)
+            const neighbors = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+            neighbors.forEach(n => {
+                const nx = x+n[0], ny = y+n[1], nz = z+n[2];
+                const nk = `${nx},${ny},${nz}`;
+                const nb = worldData[nk];
+                if (nb && nb.instanceId === null) {
+                    // It exists but was hidden. Now it's exposed.
+                    addBlockInstance(nx, ny, nz, nb.type);
+                }
+            });
+        }
+
+        function placeBlock(x, y, z, type) {
+            setBlockData(x, y, z, type);
+            addBlockInstance(x, y, z, type);
+            modifiedBlocks[`${x},${y},${z}`] = type;
+            // Ideally check if neighbors become occluded, but not strictly necessary for basic functionality
+        }
+
+        // --- 7. UI & EVENTS ---
+        function createMaterials() {
+             const createTex = (c) => {
+                const cv = document.createElement('canvas'); cv.width=64; cv.height=64;
+                const ctx = cv.getContext('2d'); ctx.fillStyle = c; ctx.fillRect(0,0,64,64);
+                ctx.fillStyle = "rgba(255,255,255,0.1)"; 
+                for(let i=0;i<100;i++) ctx.fillRect(Math.random()*64,Math.random()*64,4,4);
+                ctx.strokeStyle="rgba(0,0,0,0.2)"; ctx.strokeRect(0,0,64,64);
+                const t = new THREE.CanvasTexture(cv); t.magFilter = THREE.NearestFilter;
+                return t;
+            };
+            const tex = [null, [createTex('#8b5a2b'), createTex('#8b5a2b'), createTex('#417a4b'), createTex('#8b5a2b'), createTex('#8b5a2b'), createTex('#8b5a2b')], createTex('#8b5a2b'), createTex('#7a7a7a'), createTex('#5c3a21'), createTex('#3a5f0b'), createTex('#cb4154')];
+            for(let i=1; i<=6; i++) {
+                if(Array.isArray(tex[i])) materials[i] = tex[i].map(t => new THREE.MeshLambertMaterial({map: t}));
+                else materials[i] = new THREE.MeshLambertMaterial({map: tex[i]});
+            }
+        }
+
+        function initializeInstancedMeshes() {
+            for (let i = 1; i <= 6; i++) {
+                const mesh = new THREE.InstancedMesh(blockGeometry, materials[i], MAX_INSTANCES);
+                mesh.castShadow = true; mesh.receiveShadow = true; mesh.count = 0;
+                mesh.userData = { isBlock: true, type: i };
+                scene.add(mesh);
+                meshMap[i] = mesh;
+                instanceIdMap[i] = {};
+            }
+        }
+
+        function populateWorldList() {
+            const list = document.getElementById('world-list');
+            list.innerHTML = '';
+            const worlds = Storage.getWorlds();
+            if (worlds.length === 0) list.innerHTML = '<div style="text-align:center; color:#aaa; padding:20px;">No worlds created yet.</div>';
+            let selectedId = null;
+            worlds.forEach(w => {
+                const div = document.createElement('div');
+                div.className = 'world-item';
+                div.innerHTML = `<div><b>${w.name}</b><br><small>Seed: ${w.seed}</small></div>`;
+                div.onclick = () => {
+                    document.querySelectorAll('.world-item').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    selectedId = w.id;
+                    document.getElementById('btn-play-selected').classList.remove('disabled');
+                    document.getElementById('btn-delete-init').classList.remove('disabled');
+                };
+                list.appendChild(div);
+            });
+            document.getElementById('btn-play-selected').onclick = () => { if(selectedId) { const w = worlds.find(x => x.id === selectedId); loadSelectedWorld(w.id, w.seed); }};
+            
+            // Delete flow
+            document.getElementById('btn-delete-init').onclick = () => { 
+                if(selectedId) {
+                    worldToDelete = selectedId;
+                    document.getElementById('delete-modal').style.display = 'flex';
+                }
+            };
+        }
+
+        function setupEvents() {
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousemove', onMouseMove); 
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousedown', onMouseClick);
+            document.addEventListener('pointerlockchange', onPointerLockChange);
+
+            bindBtn('btn-play', () => { setMenu('SELECT'); populateWorldList(); });
+            bindBtn('btn-options-main', () => { setMenu('SETTINGS'); previousMenu = 'MAIN'; });
+            bindBtn('btn-back-settings', () => { setMenu(previousMenu); if(previousMenu === 'HUD') requestLock(); });
+            bindBtn('btn-create-menu', () => setMenu('CREATE'));
+            bindBtn('btn-back-main', () => setMenu('MAIN'));
+            bindBtn('btn-back-select', () => setMenu('SELECT'));
+            
+            // Delete Modal Buttons
+            bindBtn('btn-delete-cancel', () => document.getElementById('delete-modal').style.display = 'none');
+            bindBtn('btn-delete-confirm', () => {
+                if(worldToDelete) {
+                    Storage.deleteWorld(worldToDelete);
+                    worldToDelete = null;
+                    document.getElementById('delete-modal').style.display = 'none';
+                    populateWorldList();
+                }
+            });
+            
+            bindBtn('btn-create-confirm', () => {
+                const name = document.getElementById('inp-world-name').value || "New World";
+                const seed = document.getElementById('inp-world-seed').value;
+                const id = Storage.createWorld(name, seed);
+                populateWorldList();
+                setMenu('SELECT');
+            });
+
+            bindBtn('btn-resume', () => { setMenu('HUD'); requestLock(); });
+            bindBtn('btn-options-pause', () => { setMenu('SETTINGS'); previousMenu = 'PAUSE'; });
+            bindBtn('btn-quit', () => { 
+                Storage.saveChunkData(); 
+                isGameActive = false; 
+                document.exitPointerLock(); 
+                AudioSys.stopWind(); 
+                setMenu('MAIN'); 
+            });
+
+            bindSetting('opt-render', 'input', (v) => { SETTINGS.renderDistance = parseInt(v); document.getElementById('val-render').innerText = v; if(isGameActive) updateChunks(); });
+            bindSetting('opt-fov', 'input', (v) => { SETTINGS.fov = parseInt(v); camera.fov = SETTINGS.fov; camera.updateProjectionMatrix(); document.getElementById('val-fov').innerText = v; });
+            bindSetting('opt-vol-sfx', 'input', (v) => { SETTINGS.volSfx = parseInt(v); AudioSys.setVolumes(SETTINGS.volSfx, SETTINGS.volAmb); });
+            bindSetting('opt-vol-amb', 'input', (v) => { SETTINGS.volAmb = parseInt(v); AudioSys.setVolumes(SETTINGS.volSfx, SETTINGS.volAmb); });
+            
+            bindBtn('opt-clouds', function() { SETTINGS.clouds = !SETTINGS.clouds; this.innerText = SETTINGS.clouds ? "ON" : "OFF"; cloudMesh.visible = SETTINGS.clouds; });
+            bindBtn('opt-shadows', function() { 
+                SETTINGS.shadows = !SETTINGS.shadows; 
+                this.innerText = SETTINGS.shadows ? "ON" : "OFF";
+                renderer.shadowMap.enabled = SETTINGS.shadows;
+                if(dirLight) dirLight.castShadow = SETTINGS.shadows;
+                scene.traverse(c => { if(c.material) c.material.needsUpdate = true; });
+            });
+        }
+
+        function setMenu(state) {
+            document.querySelectorAll('.ui-layer').forEach(el => el.style.display = 'none');
+            if(state === 'MAIN') document.getElementById('main-menu').style.display = 'flex';
+            if(state === 'SELECT') document.getElementById('world-select').style.display = 'flex';
+            if(state === 'CREATE') document.getElementById('create-world').style.display = 'flex';
+            if(state === 'SETTINGS') document.getElementById('settings-panel').style.display = 'flex';
+            if(state === 'PAUSE') document.getElementById('pause-menu').style.display = 'flex';
+            if(state === 'HUD') document.getElementById('ui-container').style.display = 'flex';
+            if(state === 'LOADING') document.getElementById('loading-screen').style.display = 'flex';
+            gameState = state;
+        }
+
+        function bindBtn(id, cb) { document.getElementById(id).onclick = cb; }
+        function bindSetting(id, ev, cb) { document.getElementById(id).addEventListener(ev, (e) => cb(e.target.value)); }
+        function updateHotbarUI() {
+            document.querySelectorAll('.slot').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.slot:nth-child(${selectedBlockType})`).classList.add('active');
+        }
+
+        function requestLock() { 
+            const p = document.body.requestPointerLock();
+            if (p && p.catch) p.catch(() => {});
+        }
+
+        function onPointerLockChange() {
+            if (document.pointerLockElement === document.body) {
+                controls.locked = true;
+                setMenu('HUD');
+                AudioSys.resume();
+            } else {
+                controls.locked = false;
+                if (isGameActive) {
+                    if (gameState !== 'SETTINGS') setMenu('PAUSE');
+                    AudioSys.ctx.suspend();
+                }
+            }
+        }
+
+        function onMouseMove(event) {
+            if (controls.locked) {
+                camera.rotation.y -= event.movementX * 0.002;
+                camera.rotation.x -= event.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            }
+        }
+
+        function onKeyDown(e) {
+            if (gameState !== 'HUD') return;
+            switch(e.code) {
+                case 'KeyW': controls.moveForward = true; break;
+                case 'KeyA': controls.moveLeft = true; break;
+                case 'KeyS': controls.moveBackward = true; break;
+                case 'KeyD': controls.moveRight = true; break;
+                case 'Space': if(velocity.y === 0 || spectatorMode) { if(!spectatorMode) velocity.y = 8.0; controls.jump = true; } break;
+                case 'ShiftLeft': 
+                    spectatorMode = !spectatorMode;
+                    document.getElementById('spectator-hint').style.display = spectatorMode ? 'block' : 'none';
+                    
+                    // Toggle X-Ray Transparency
+                    for(let key in materials) {
+                        let mat = materials[key];
+                        if(Array.isArray(mat)) {
+                            mat.forEach(m => {
+                                m.transparent = spectatorMode;
+                                m.opacity = spectatorMode ? 0.2 : 1.0;
+                                m.depthWrite = !spectatorMode; // See through
+                                m.needsUpdate = true;
+                            });
+                        } else {
+                            mat.transparent = spectatorMode;
+                            mat.opacity = spectatorMode ? 0.2 : 1.0;
+                            mat.depthWrite = !spectatorMode;
+                            mat.needsUpdate = true;
+                        }
+                    }
+
+                    if (spectatorMode) {
+                        savedPlayerPos.copy(camera.position);
+                        velocity.set(0,0,0);
+                    } else {
+                        camera.position.copy(savedPlayerPos);
+                        velocity.set(0,0,0);
+                    }
+                    break;
+                case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Digit5': case 'Digit6': 
+                    selectedBlockType = parseInt(e.key);
+                    updateHotbarUI();
+                    break;
+            }
+        }
+        function onKeyUp(e) {
+            switch(e.code) {
+                case 'KeyW': controls.moveForward = false; break;
+                case 'KeyA': controls.moveLeft = false; break;
+                case 'KeyS': controls.moveBackward = false; break;
+                case 'KeyD': controls.moveRight = false; break;
+                case 'Space': controls.jump = false; break;
+            }
+        }
+
+        function onMouseClick(e) {
+            if (!controls.locked || gameState !== 'HUD' || spectatorMode) return;
+            if (e.button !== 0 && e.button !== 2) return;
+            raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+            const intersects = raycaster.intersectObjects(Object.values(meshMap));
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                // With InstancedMesh, matrix access is key
+                intersect.object.getMatrixAt(intersect.instanceId, dummy.matrix);
+                dummy.position.setFromMatrixPosition(dummy.matrix);
+                const bx = Math.round(dummy.position.x);
+                const by = Math.round(dummy.position.y);
+                const bz = Math.round(dummy.position.z);
+                
+                if (e.button === 0) {
+                    breakBlock(bx, by, bz);
+                    AudioSys.playFootstep(); 
+                } else if (e.button === 2) {
+                    const n = intersect.face.normal;
+                    const px = bx + Math.round(n.x);
+                    const py = by + Math.round(n.y);
+                    const pz = bz + Math.round(n.z);
+                    
+                    const playerHalfW = 0.3;
+                    const playerBox = new THREE.Box3(
+                        new THREE.Vector3(camera.position.x - playerHalfW, camera.position.y - PLAYER_HEIGHT, camera.position.z - playerHalfW),
+                        new THREE.Vector3(camera.position.x + playerHalfW, camera.position.y, camera.position.z + playerHalfW)
+                    );
+                    const blockBox = new THREE.Box3(
+                        new THREE.Vector3(px - 0.5, py - 0.5, pz - 0.5),
+                        new THREE.Vector3(px + 0.5, py + 0.5, pz + 0.5)
+                    );
+
+                    if (playerBox.intersectsBox(blockBox)) return; 
+
+                    placeBlock(px, py, pz, selectedBlockType); 
+                    AudioSys.playFootstep(); 
+                }
+            }
+        }
+
+        function checkCollision(x, y, z) {
+            const r = 0.3; 
+            const check = (px, py, pz) => !!worldData[`${Math.round(px)},${Math.round(py)},${Math.round(pz)}`];
+            const feet = y - PLAYER_HEIGHT + 0.2;
+            const torso = y - PLAYER_HEIGHT * 0.5;
+            const head = y - 0.2;
+            const points = [feet, torso, head];
+            const offs = [[0,0], [r,0], [-r,0], [0,r], [0,-r]];
+            for (let cy of points) {
+                for (let o of offs) {
+                    if (check(x+o[0], cy, z+o[1])) return true;
+                }
+            }
+            return false;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (gameState !== 'HUD') {
+                if(skyMesh) skyMesh.rotation.y += 0.0005;
+                if(cloudMesh && SETTINGS.clouds) {
+                     cloudMesh.position.x += 0.01;
+                     cloudMesh.position.z += 0.005;
+                }
+                renderer.render(scene, camera);
+                return;
+            }
+
+            const time = performance.now();
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
+            prevTime = time;
+
+            if(dirLight) {
+                dirLight.position.set(camera.position.x + 50, camera.position.y + 100, camera.position.z + 50);
+                dirLight.target.position.copy(camera.position);
+                dirLight.target.updateMatrixWorld();
+            }
+            if(skyMesh) {
+                skyMesh.position.x = camera.position.x;
+                skyMesh.position.z = camera.position.z;
+            }
+
+            if (spectatorMode) {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= velocity.y * 10.0 * delta;
+
+                if (controls.moveForward || controls.moveBackward || controls.moveLeft || controls.moveRight || controls.jump) {
+                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                    const force = new THREE.Vector3();
+                    if(controls.moveForward) force.add(forward);
+                    if(controls.moveBackward) force.sub(forward);
+                    if(controls.moveRight) force.add(right);
+                    if(controls.moveLeft) force.sub(right);
+                    if(controls.jump) force.y += 1; 
+                    
+                    force.normalize().multiplyScalar(100.0 * delta); 
+                    velocity.add(force);
+                }
+                camera.position.add(velocity.clone().multiplyScalar(delta));
+            } else {
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= GRAVITY * delta;
+
+                direction.z = Number(controls.moveForward) - Number(controls.moveBackward);
+                direction.x = Number(controls.moveLeft) - Number(controls.moveRight);
+                direction.normalize();
+
+                const speed = 6.0 * delta;
+                if (controls.moveForward || controls.moveBackward) velocity.z -= direction.z * 400.0 * delta;
+                if (controls.moveLeft || controls.moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+                const dx = Math.sin(camera.rotation.y) * direction.z * speed + Math.sin(camera.rotation.y + Math.PI/2) * direction.x * speed;
+                const dz = Math.cos(camera.rotation.y) * direction.z * speed + Math.cos(camera.rotation.y + Math.PI/2) * direction.x * speed;
+
+                if((controls.moveForward || controls.moveBackward || controls.moveLeft || controls.moveRight) && velocity.y === 0) {
+                    stepTimer += delta;
+                    if(stepTimer > 0.4) { AudioSys.playFootstep(); stepTimer = 0; }
+                } else { stepTimer = 0.4; }
+
+                if (!checkCollision(camera.position.x - dx, camera.position.y, camera.position.z)) camera.position.x -= dx;
+                if (!checkCollision(camera.position.x, camera.position.y, camera.position.z - dz)) camera.position.z -= dz;
+                
+                camera.position.y += velocity.y * delta;
+
+                const groundY = Math.floor(camera.position.y - PLAYER_HEIGHT + 0.1);
+                if (worldData[`${Math.round(camera.position.x)},${groundY},${Math.round(camera.position.z)}`] && velocity.y <= 0) {
+                    velocity.y = 0;
+                    camera.position.y = groundY + 1 + PLAYER_HEIGHT - 0.1;
+                    controls.jump = false;
+                } 
+                
+                if (checkCollision(camera.position.x, camera.position.y, camera.position.z)) {
+                    camera.position.y += 0.1;
+                }
+                
+                if (camera.position.y < -60) { camera.position.y = 50; velocity.y = 0; }
+            }
+
+            if(AudioSys.windNode) AudioSys.windNode.frequency.value = 400 + Math.max(0, camera.position.y * 10);
+
+            if (Math.floor(time) % 20 === 0) updateChunks();
+            processChunkQueue();
+
+            if(cloudMesh && SETTINGS.clouds) {
+                cloudMesh.position.x = camera.position.x + (time * 0.005) % 100;
+                cloudMesh.position.z = camera.position.z + (time * 0.002) % 100;
+            }
+
+            const px = Math.floor(camera.position.x);
+            const py = Math.floor(camera.position.y);
+            const pz = Math.floor(camera.position.z);
+            document.getElementById('debug-info').innerHTML = `Minicraft Web<br>XYZ: ${px}, ${py}, ${pz}<br>World: ${currentWorldId}`;
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        init();
+        animate();
+    </script>
+</body>
+</html>
