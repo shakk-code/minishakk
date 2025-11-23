@@ -481,8 +481,16 @@
             localStorage.setItem('planner_reminders_enabled', state.smartReminders);
             if (state.smartReminders) {
                 SoundSystem.init();
-                if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-                    Notification.requestPermission();
+                if ("Notification" in window) {
+                    if (Notification.permission === "granted") {
+                         new Notification("Smart Reminders Active", { body: "Notifications are working correctly." });
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                                new Notification("Smart Reminders Enabled", { body: "You will now receive notifications." });
+                            }
+                        });
+                    }
                 }
             }
         }
@@ -879,7 +887,7 @@
                     task.notifiedEnd = true; saveTasks();
                 }
             });
-        }, 1000); // Changed from 5000 to 1000 for more reliable timing on short tasks
+        }, 1000);
 
         function notify(title, body) {
             const area = document.getElementById('notification-area');
@@ -891,7 +899,10 @@
             requestAnimationFrame(() => el.classList.remove('translate-y-full', 'opacity-0'));
             setTimeout(() => { el.classList.add('translate-y-2', 'opacity-0'); setTimeout(()=>el.remove(), 300); }, 4000);
 
-            if(document.hidden && Notification.permission === "granted") new Notification(title, { body });
+            // Native - Removed document.hidden check so it always fires if permitted
+            if("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, { body });
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
