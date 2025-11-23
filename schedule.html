@@ -122,8 +122,6 @@
         .wheel-container {
             height: 120px;
             overflow-y: scroll;
-            /* Removed scroll-snap to fix smooth drag */
-            /* scroll-snap-type: y mandatory; */
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none;  /* IE 10+ */
             position: relative;
@@ -141,8 +139,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            /* Removed scroll-snap to fix smooth drag */
-            /* scroll-snap-align: center; */
             font-size: 1rem;
             font-weight: 500;
             color: #8E8E93;
@@ -409,24 +405,30 @@
             },
             playBeep: function() {
                 if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.frequency.setValueAtTime(880, this.ctx.currentTime);
-                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                // Increased Volume (Gain 0.05 -> 0.3)
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
                 osc.start();
                 osc.stop(this.ctx.currentTime + 0.1);
             },
             playBell: function() {
                 if (!this.ctx) this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
-                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                // Increased Volume (Gain 0.2 -> 0.5)
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
                 osc.start();
                 osc.stop(this.ctx.currentTime + 1.5);
@@ -719,12 +721,22 @@
                 return;
             }
 
+            // Helper to convert 24h string to 12h string for display
+            const toAmPm = (timeStr) => {
+                if (!timeStr) return '';
+                let [h, m] = timeStr.split(':');
+                h = parseInt(h);
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                return `${h}:${m} ${ampm}`;
+            };
+
             const tmpl = document.getElementById('task-template');
             tasks.forEach((task, idx) => {
                 const clone = tmpl.content.cloneNode(true);
                 
-                clone.querySelector('.task-start-time').textContent = task.startTime;
-                clone.querySelector('.task-end-time').textContent = task.endTime;
+                clone.querySelector('.task-start-time').textContent = toAmPm(task.startTime);
+                clone.querySelector('.task-end-time').textContent = toAmPm(task.endTime);
                 clone.querySelector('.task-title').textContent = task.title;
                 
                 if (task.notes) {
@@ -842,24 +854,32 @@
                 const elapsed = now - start;
                 const progress = elapsed / duration;
 
-                if(now >= start && elapsed < 5000 && !task.notifiedStart) {
+                // Start Notification
+                if(now >= start && !task.notifiedStart) {
                     SoundSystem.playBell();
                     notify(`Starting: ${task.title}`, task.notes || "Time to focus.");
                     task.notifiedStart = true; saveTasks();
                 }
-                if(progress > 0.25 && progress < 0.3 && !task.notified25) {
+
+                // Progress Notifications (Simplified Logic for reliability)
+                if(progress >= 0.25 && !task.notified25) {
                      SoundSystem.playBeep(); notify("25% Complete", task.title); task.notified25 = true; saveTasks();
                 }
-                if(progress > 0.5 && progress < 0.55 && !task.notified50) {
+                if(progress >= 0.50 && !task.notified50) {
                      SoundSystem.playBeep(); notify("Halfway There", task.title); task.notified50 = true; saveTasks();
                 }
+                if(progress >= 0.75 && !task.notified75) {
+                     SoundSystem.playBeep(); notify("75% - Almost Done", task.title); task.notified75 = true; saveTasks();
+                }
+
+                // End Notification
                 if(now >= end && !task.notifiedEnd) {
                     SoundSystem.playBell();
                     notify("Time's Up", `${task.title} should be finished.`);
                     task.notifiedEnd = true; saveTasks();
                 }
             });
-        }, 5000);
+        }, 1000); // Changed from 5000 to 1000 for more reliable timing on short tasks
 
         function notify(title, body) {
             const area = document.getElementById('notification-area');
