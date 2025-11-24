@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule/Planner</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
@@ -16,920 +13,493 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
                         ios: {
-                            bg: '#F2F2F7',
-                            card: '#FFFFFF',
-                            text: '#000000',
-                            subtext: '#8E8E93',
-                            blue: '#007AFF',
-                            red: '#FF3B30',
-                            green: '#34C759',
-                            separator: '#C6C6C8',
-                            dark: {
-                                bg: '#000000',
-                                card: '#1C1C1E',
-                                text: '#FFFFFF',
-                                subtext: '#98989D',
-                                separator: '#38383A'
-                            }
+                            bg: '#F2F2F7', card: '#FFFFFF', text: '#000000', subtext: '#8E8E93',
+                            blue: '#007AFF', red: '#FF3B30', green: '#34C759', separator: '#C6C6C8',
+                            dark: { bg: '#000000', card: '#1C1C1E', text: '#FFFFFF', subtext: '#98989D', separator: '#38383A' }
                         }
-                    },
-                    boxShadow: {
-                        'soft': '0 8px 30px rgba(0,0,0,0.04)',
-                        'hover': '0 10px 40px rgba(0,0,0,0.08)',
-                        'glow': '0 0 20px rgba(0,0,0,0.1)'
                     }
                 }
             }
         }
     </script>
     <style>
-        :root {
-            --zoom-scale: 1;
-        }
-
-        body {
-            background-color: #F5F5F7;
-            transition: background-color 0.3s ease, color 0.3s ease;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            overscroll-behavior: none;
-        }
-
-        .dark body {
-            background-color: #000000;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background-color: rgba(128,128,128,0.2);
-            border-radius: 20px;
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .task-checkbox:checked + div {
-            text-decoration: line-through;
-            opacity: 0.6;
-        }
-        
-        button, input, .day-cell, .task-card-wrapper {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Zoomable Task Styles */
-        .task-card-wrapper {
-            transform-origin: top left;
-            font-size: calc(1rem * var(--zoom-scale));
-        }
-        .task-card-inner {
-            padding: calc(1rem * var(--zoom-scale));
-        }
-        .task-time-col {
-            width: calc(5rem * var(--zoom-scale)); /* Widen for start/end */
-        }
-
-        /* Toggle Switch Fixed Logic */
-        .toggle-checkbox {
-            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), border-color 0.3s ease;
-        }
-        .toggle-checkbox:checked {
-            transform: translateX(100%);
-            border-color: #007AFF;
-        }
-        .toggle-checkbox:checked + .toggle-label {
-            background-color: #007AFF;
-        }
-        
-        /* Wheel Picker Styles */
-        .wheel-container {
-            height: 120px;
-            overflow-y: scroll;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* IE 10+ */
-            position: relative;
-            cursor: grab;
-            user-select: none;
-        }
-        .wheel-container:active {
-            cursor: grabbing;
-        }
-        .wheel-container::-webkit-scrollbar { 
-            display: none;  /* Chrome/Safari */
-        }
-        .wheel-item {
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            font-weight: 500;
-            color: #8E8E93;
-            transition: all 0.2s ease-out;
-            cursor: pointer;
-            opacity: 0.4;
-            transform: scale(0.85);
-            user-select: none;
-        }
-        .wheel-item.active {
-            color: #000000;
-            font-weight: 700;
-            transform: scale(1.15);
-            opacity: 1;
-            font-size: 1.25rem;
-        }
-        .dark .wheel-item.active {
-            color: #FFFFFF;
-        }
-        .wheel-highlight {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 40px;
-            transform: translateY(-50%);
-            border-top: 1px solid rgba(128,128,128,0.2);
-            border-bottom: 1px solid rgba(128,128,128,0.2);
-            pointer-events: none;
-            background: rgba(128,128,128,0.05);
-            z-index: 0;
-        }
-
+        :root { --zoom-scale: 1; }
+        body { background-color: #F5F5F7; transition: background-color 0.3s ease, color 0.3s ease; -webkit-font-smoothing: antialiased; overflow: hidden; }
+        .dark body { background-color: #000000; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(128,128,128,0.2); border-radius: 20px; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .task-checkbox:checked + div { text-decoration: line-through; opacity: 0.6; }
+        button, input, .day-cell, .task-card-wrapper, .sidebar, .toggle-checkbox { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .task-card-wrapper { transform-origin: top left; font-size: calc(1rem * var(--zoom-scale)); }
+        .task-card-inner { padding: calc(1rem * var(--zoom-scale)); }
+        .task-time-col { width: calc(5rem * var(--zoom-scale)); }
+        .toggle-checkbox:checked { transform: translateX(100%); border-color: #007AFF; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #007AFF; }
+        .sidebar-open main { transform: translateX(20px) scale(0.98); border-radius: 20px; box-shadow: -20px 0 40px rgba(0,0,0,0.1); overflow: hidden; }
+        .sidebar-closed main { transform: translateX(0) scale(1); border-radius: 0; }
+        select { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; }
+        .dragging { opacity: 0.5; transform: scale(0.95); }
+        .drag-over { border: 2px dashed #007AFF; background-color: rgba(0, 122, 255, 0.05); }
+        .wheel-container { height: 120px; overflow-y: scroll; scrollbar-width: none; -ms-overflow-style: none; position: relative; cursor: grab; user-select: none; }
+        .wheel-container:active { cursor: grabbing; }
+        .wheel-container::-webkit-scrollbar { display: none; }
+        .wheel-item { height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 500; color: #8E8E93; transition: all 0.2s ease-out; cursor: pointer; opacity: 0.4; transform: scale(0.85); user-select: none; }
+        .wheel-item.active { color: #000000; font-weight: 700; transform: scale(1.15); opacity: 1; font-size: 1.25rem; }
+        .dark .wheel-item.active { color: #FFFFFF; }
+        .wheel-highlight { position: absolute; top: 50%; left: 0; right: 0; height: 40px; transform: translateY(-50%); border-top: 1px solid rgba(128,128,128,0.2); border-bottom: 1px solid rgba(128,128,128,0.2); pointer-events: none; background: rgba(128,128,128,0.05); z-index: 0; }
     </style>
 </head>
-<body class="h-screen w-full flex items-center justify-center p-4 sm:p-8 text-ios-text dark:text-ios-dark-text selection:bg-black dark:selection:bg-white dark:selection:text-black overflow-hidden transition-colors">
+<body class="h-screen w-full flex overflow-hidden bg-white dark:bg-black transition-colors duration-300 sidebar-closed" id="app-body">
 
     <!-- Notification Container -->
-    <div id="notification-area" class="fixed top-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+    <div id="notification-area" class="fixed top-6 right-6 z-[70] flex flex-col gap-3 pointer-events-none"></div>
 
-    <!-- Main App Container -->
-    <div class="w-full max-w-7xl h-full max-h-[900px] bg-white dark:bg-ios-dark-card rounded-[32px] shadow-2xl flex flex-col md:flex-row overflow-hidden relative ring-1 ring-black/5 dark:ring-white/10 transition-colors duration-300">
-        
-        <!-- Sidebar / Calendar Section -->
-        <div class="w-full md:w-[380px] bg-[#FAFAFA] dark:bg-[#121212] border-r border-ios-separator/30 dark:border-white/10 flex flex-col p-6 md:p-8 relative z-10">
-            <!-- Header -->
-            <div class="mb-8">
-                <div class="flex justify-between items-start">
-                    <h1 class="text-3xl font-bold tracking-tight text-black dark:text-white mb-1">Schedule</h1>
-                    <!-- Dark Mode Toggle -->
-                    <button onclick="toggleDarkMode()" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                        <i data-lucide="moon" class="w-5 h-5 dark:hidden block"></i>
-                        <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-white"></i>
-                    </button>
-                </div>
-                <p class="text-ios-subtext text-sm font-medium" id="current-full-date">Loading...</p>
-            </div>
-
-            <!-- Calendar Navigation -->
-            <div class="flex items-center justify-between mb-6">
-                <button id="prev-month" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-black dark:text-white">
-                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                </button>
-                <h2 id="calendar-month-year" class="text-lg font-medium text-black dark:text-white"></h2>
-                <button id="next-month" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-black dark:text-white">
-                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <!-- Calendar Grid -->
-            <div class="grid grid-cols-7 gap-2 mb-2 text-center">
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Su</span>
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Mo</span>
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Tu</span>
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">We</span>
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Th</span>
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Fr</span>
-                <span class="text-xs font-semibold text-ios-subtext uppercase tracking-wider">Sa</span>
-            </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-sm font-medium flex-grow content-start">
-                <!-- Days injected by JS -->
-            </div>
-            
-            <!-- Quick Stats & Settings -->
-            <div class="mt-auto pt-6 border-t border-black/5 dark:border-white/10 space-y-4">
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-ios-subtext">Pending Tasks</span>
-                    <span class="font-semibold bg-black dark:bg-white text-white dark:text-black px-2 py-0.5 rounded-full text-xs" id="pending-count">0</span>
-                </div>
-                
-                <!-- Smart Reminders Toggle -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                         <i data-lucide="bell-ring" class="w-4 h-4 text-ios-subtext"></i>
-                        <span class="text-sm font-medium text-black dark:text-white">Smart Reminders</span>
-                    </div>
-                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" name="toggle" id="smart-reminders-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 dark:border-gray-600 left-0"/>
-                        <label for="smart-reminders-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300"></label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content / Day View -->
-        <div class="flex-1 flex flex-col bg-white dark:bg-ios-dark-card relative transition-colors duration-300" id="main-content-area">
-            
-            <!-- Top Bar -->
-            <div class="h-20 border-b border-black/5 dark:border-white/10 flex items-center justify-between px-8 bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-md sticky top-0 z-20">
-                <div class="flex items-center gap-6">
-                    <div>
-                        <h2 class="text-2xl font-semibold text-black dark:text-white" id="selected-date-display">Today</h2>
-                        <p class="text-xs text-ios-subtext font-medium mt-0.5">Timeline • Ctrl+Scroll to Zoom</p>
-                    </div>
-                </div>
-
-                <button onclick="openAddTaskModal()" class="group flex items-center gap-2 bg-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/90 text-white dark:text-black px-5 py-2.5 rounded-full transition-all shadow-lg shadow-black/20 dark:shadow-white/10 active:scale-95">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                    <span class="text-sm font-medium">New Task</span>
-                </button>
-            </div>
-
-            <!-- Tasks List -->
-            <div class="flex-1 overflow-y-auto p-8" id="tasks-container">
-                <!-- Tasks injected by JS -->
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#1C1C1E] w-full max-w-sm rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300">
+            <h3 id="confirm-title" class="text-lg font-bold text-black dark:text-white mb-2">Confirm Action</h3>
+            <p id="confirm-msg" class="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">Are you sure?</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-white/10 text-black dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">Cancel</button>
+                <button id="confirm-btn-action" class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-opacity">Confirm</button>
             </div>
         </div>
     </div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-[340px] bg-[#F2F2F7] dark:bg-[#1C1C1E] z-40 transform -translate-x-full transition-transform duration-300 ease-in-out border-r border-black/5 dark:border-white/10 flex flex-col h-full shadow-2xl">
+        <div class="h-20 flex items-center justify-between px-6 border-b border-black/5 dark:border-white/10">
+            <h2 class="text-xl font-bold text-black dark:text-white">Menu</h2>
+            <button onclick="toggleSidebar()" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-black dark:text-white"><i data-lucide="chevrons-left" class="w-5 h-5"></i></button>
+        </div>
+        <div class="flex p-2 gap-1 border-b border-black/5 dark:border-white/10">
+            <button onclick="switchTab('calendar')" class="flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-white/50 dark:hover:bg-white/5 active-tab" id="tab-btn-calendar">Calendar</button>
+            <button onclick="switchTab('routines')" class="flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-white/50 dark:hover:bg-white/5" id="tab-btn-routines">Routines</button>
+            <button onclick="switchTab('library')" class="flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-white/50 dark:hover:bg-white/5" id="tab-btn-library">Library</button>
+            <button onclick="switchTab('settings')" class="flex-1 py-2 text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-white/50 dark:hover:bg-white/5" id="tab-btn-settings">Settings</button>
+        </div>
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+            <div id="tab-calendar" class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <button id="prev-month" class="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-black dark:text-white"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                    <h2 id="calendar-month-year" class="text-base font-medium text-black dark:text-white"></h2>
+                    <button id="next-month" class="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full text-black dark:text-white"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center mb-2"><span class="text-[10px] font-bold text-ios-subtext uppercase">Su</span><span class="text-[10px] font-bold text-ios-subtext uppercase">Mo</span><span class="text-[10px] font-bold text-ios-subtext uppercase">Tu</span><span class="text-[10px] font-bold text-ios-subtext uppercase">We</span><span class="text-[10px] font-bold text-ios-subtext uppercase">Th</span><span class="text-[10px] font-bold text-ios-subtext uppercase">Fr</span><span class="text-[10px] font-bold text-ios-subtext uppercase">Sa</span></div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-sm font-medium"></div>
+            </div>
+            <div id="tab-routines" class="hidden space-y-6">
+                <p class="text-xs text-gray-500">Drag routines to calendar tab to assign.</p>
+                <div id="routines-list" class="space-y-3"></div>
+                <div class="pt-4 border-t border-black/5 dark:border-white/10">
+                     <h3 class="text-sm font-semibold text-ios-subtext uppercase tracking-wider mb-2">Auto-Fill Rules</h3>
+                     <div id="routine-rules-container" class="space-y-2 mb-4"></div>
+                     <div class="flex justify-between gap-2">
+                         <button onclick="bulkSetRules('all')" title="Apply to All Days" class="flex-1 flex items-center justify-center gap-1 bg-white dark:bg-white/5 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-xs font-medium text-black dark:text-white border border-transparent hover:border-black/5"><i data-lucide="calendar" class="w-3 h-3"></i></button>
+                         <button onclick="bulkSetRules('weekdays')" title="Apply to Weekdays" class="flex-1 flex items-center justify-center gap-1 bg-white dark:bg-white/5 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-xs font-medium text-black dark:text-white border border-transparent hover:border-black/5"><i data-lucide="briefcase" class="w-3 h-3"></i></button>
+                         <button onclick="bulkSetRules('weekend')" title="Apply to Weekends" class="flex-1 flex items-center justify-center gap-1 bg-white dark:bg-white/5 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-xs font-medium text-black dark:text-white border border-transparent hover:border-black/5"><i data-lucide="coffee" class="w-3 h-3"></i></button>
+                         <button onclick="resetRules()" title="Reset Rules" class="flex-1 flex items-center justify-center gap-1 bg-white dark:bg-white/5 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-medium text-red-500 border border-transparent hover:border-red-200 dark:hover:border-red-900/30"><i data-lucide="rotate-ccw" class="w-3 h-3"></i></button>
+                     </div>
+                </div>
+            </div>
+            <div id="tab-library" class="hidden space-y-4">
+                <p class="text-xs text-gray-500">Drag items to the timeline to add.</p>
+                <div id="task-library-list" class="space-y-2"></div>
+            </div>
+            <div id="tab-settings" class="hidden space-y-6">
+                <div class="flex items-center justify-between bg-white dark:bg-white/5 p-3 rounded-xl">
+                    <div class="flex items-center gap-3"><div class="p-2 bg-gray-100 dark:bg-gray-800 rounded-full"><i data-lucide="moon" class="w-4 h-4 text-black dark:text-white"></i></div><span class="text-sm font-medium text-black dark:text-white">Dark Mode</span></div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none"><input type="checkbox" name="darkmode-toggle" id="darkmode-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 dark:border-gray-600 left-0" onclick="toggleDarkMode(this.checked)"/><label for="darkmode-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300"></label></div>
+                </div>
+                <div class="flex items-center justify-between bg-white dark:bg-white/5 p-3 rounded-xl">
+                    <div class="flex items-center gap-3"><div class="p-2 bg-gray-100 dark:bg-gray-800 rounded-full"><i data-lucide="bell-ring" class="w-4 h-4 text-black dark:text-white"></i></div><div class="flex flex-col"><span class="text-sm font-medium text-black dark:text-white">Smart Reminders</span><span class="text-[10px] text-gray-500">Beeps & Notifications</span></div></div>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none"><input type="checkbox" name="toggle" id="smart-reminders-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300 dark:border-gray-600 left-0"/><label for="smart-reminders-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300"></label></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 h-full flex flex-col relative bg-white dark:bg-black transition-all duration-300">
+        <div class="h-20 border-b border-black/5 dark:border-white/10 flex items-center justify-between px-6 sm:px-10 bg-white/80 dark:bg-black/80 backdrop-blur-md sticky top-0 z-20">
+            <div class="flex items-center gap-4 flex-1">
+                <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-black dark:text-white"><i data-lucide="menu" class="w-6 h-6"></i></button>
+                <div class="flex-1">
+                    <div id="header-routine-mode" class="hidden flex items-center gap-2">
+                        <input type="text" id="edit-routine-name" class="text-2xl font-bold text-black dark:text-white bg-transparent border-b border-transparent focus:border-blue-500 outline-none w-full max-w-[300px]" placeholder="Routine Name">
+                        <button onclick="saveRoutineEdits()" id="save-routine-btn" class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all" title="Save Routine"><i data-lucide="save" class="w-4 h-4"></i></button>
+                    </div>
+                    <div id="header-date-mode">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold text-black dark:text-white" id="selected-date-display">Today</h2>
+                            <button onclick="initSaveRoutineMode()" class="text-gray-400 hover:text-blue-500" title="Save today as routine"><i data-lucide="bookmark-plus" class="w-5 h-5"></i></button>
+                        </div>
+                        <p class="text-xs text-ios-subtext font-medium mt-0.5">Plan out your day.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="view-schedule-btn" onclick="attemptExitRoutineMode()" class="hidden px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-white/10 rounded-lg text-black dark:text-white hover:bg-gray-200 dark:hover:bg-white/20">View Schedule</button>
+                <div class="hidden sm:flex flex-col items-end mr-4"><span class="text-xs text-ios-subtext">Pending</span><span class="font-bold text-black dark:text-white" id="pending-count">0</span></div>
+                <button onclick="openAddTaskModal()" class="group flex items-center gap-2 bg-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/90 text-white dark:text-black px-5 py-2.5 rounded-full transition-all shadow-lg shadow-black/20 dark:shadow-white/10 active:scale-95"><i data-lucide="plus" class="w-4 h-4"></i><span class="text-sm font-medium">New Task</span></button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 sm:p-10 scroll-smooth" id="tasks-container" ondragover="handleDragOver(event)" ondrop="handleDropOnSchedule(event)"></div>
+    </main>
 
     <!-- Add Task Modal -->
     <div id="modal-overlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div id="modal-content" class="bg-white dark:bg-[#2C2C2E] w-full max-w-lg rounded-[2rem] shadow-2xl p-0 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
-            
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
-                <h3 class="text-lg font-semibold text-black dark:text-white">New Event</h3>
-                <button onclick="closeAddTaskModal()" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-black dark:text-white">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <!-- Modal Body (Scrollable) -->
+        <div id="modal-content" class="bg-white dark:bg-[#1C1C1E] w-full max-w-lg rounded-[2rem] shadow-2xl p-0 transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5"><h3 class="text-lg font-semibold text-black dark:text-white">New Task</h3><button onclick="closeAddTaskModal()" class="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors text-black dark:text-white"><i data-lucide="x" class="w-5 h-5"></i></button></div>
             <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-                
-                <!-- Title & Notes -->
-                <div class="space-y-4">
-                    <input type="text" id="task-title" required class="w-full bg-[#F2F2F7] dark:bg-black/20 border-none rounded-xl px-4 py-3 text-lg font-medium text-black dark:text-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 outline-none placeholder-gray-400" placeholder="Title">
-                    
-                    <textarea id="task-notes" rows="2" class="w-full bg-[#F2F2F7] dark:bg-black/20 border-none rounded-xl px-4 py-3 text-sm text-black dark:text-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 outline-none placeholder-gray-400 resize-none" placeholder="Add notes..."></textarea>
-                </div>
-
-                <!-- Time Pickers (Scroll Wheel Style) -->
-                <div class="bg-[#F2F2F7] dark:bg-black/20 rounded-2xl p-4">
-                    <div class="flex justify-between text-xs font-semibold text-ios-subtext uppercase tracking-wider mb-2 px-2">
-                        <span class="w-1/2 text-center">Start Time</span>
-                        <span class="w-1/2 text-center">End Time</span>
-                    </div>
-                    <div class="flex gap-4">
-                        <!-- Start Time Wheels -->
-                        <div class="flex-1 flex bg-white dark:bg-white/5 rounded-xl overflow-hidden relative h-[120px]">
-                            <div class="wheel-highlight"></div>
-                            <div id="start-hour-wheel" class="wheel-container flex-1 z-10 text-center"></div>
-                            <div id="start-min-wheel" class="wheel-container flex-1 z-10 text-center"></div>
-                            <div id="start-ampm-wheel" class="wheel-container flex-1 z-10 text-center"></div>
-                        </div>
-                        
-                        <!-- Arrow -->
-                        <div class="flex items-center justify-center text-gray-400">
-                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                        </div>
-
-                        <!-- End Time Wheels -->
-                        <div class="flex-1 flex bg-white dark:bg-white/5 rounded-xl overflow-hidden relative h-[120px]">
-                            <div class="wheel-highlight"></div>
-                            <div id="end-hour-wheel" class="wheel-container flex-1 z-10 text-center"></div>
-                            <div id="end-min-wheel" class="wheel-container flex-1 z-10 text-center"></div>
-                            <div id="end-ampm-wheel" class="wheel-container flex-1 z-10 text-center"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Color Picker -->
-                <div>
-                    <label class="block text-xs font-semibold text-ios-subtext uppercase tracking-wider mb-2">Color Tag</label>
-                    <div class="flex items-center gap-3 overflow-x-auto pb-2">
-                        <!-- Presets -->
-                        <button type="button" onclick="selectColor('#007AFF')" class="color-btn w-8 h-8 rounded-full bg-[#007AFF] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
-                        <button type="button" onclick="selectColor('#FF3B30')" class="color-btn w-8 h-8 rounded-full bg-[#FF3B30] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
-                        <button type="button" onclick="selectColor('#34C759')" class="color-btn w-8 h-8 rounded-full bg-[#34C759] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
-                        <button type="button" onclick="selectColor('#AF52DE')" class="color-btn w-8 h-8 rounded-full bg-[#AF52DE] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
-                        <button type="button" onclick="selectColor('#FF9500')" class="color-btn w-8 h-8 rounded-full bg-[#FF9500] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
-                        <button type="button" onclick="selectColor('#5856D6')" class="color-btn w-8 h-8 rounded-full bg-[#5856D6] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button>
-                        
-                        <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-                        
-                        <!-- Custom -->
-                        <div class="relative group">
-                            <input type="color" id="custom-color-input" class="w-8 h-8 rounded-full overflow-hidden border-0 p-0 cursor-pointer" oninput="selectColor(this.value)">
-                            <div class="absolute inset-0 rounded-full ring-1 ring-inset ring-black/10 pointer-events-none"></div>
-                        </div>
-                        <input type="hidden" id="selected-color-value" value="#000000">
-                    </div>
-                </div>
-
+                <div class="space-y-4"><input type="text" id="task-title" list="library-suggestions" required class="w-full bg-[#F2F2F7] dark:bg-black/20 border-none rounded-xl px-4 py-3 text-lg font-medium text-black dark:text-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 outline-none placeholder-gray-400" placeholder="Task Title"><datalist id="library-suggestions"></datalist><textarea id="task-notes" rows="2" class="w-full bg-[#F2F2F7] dark:bg-black/20 border-none rounded-xl px-4 py-3 text-sm text-black dark:text-white focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 outline-none placeholder-gray-400 resize-none" placeholder="Add notes..."></textarea></div>
+                <div class="bg-[#F2F2F7] dark:bg-black/20 rounded-2xl p-4"><div class="flex justify-between text-xs font-semibold text-ios-subtext uppercase tracking-wider mb-2 px-2"><span class="w-1/2 text-center">Start Time</span><span class="w-1/2 text-center">End Time</span></div><div class="flex gap-4"><div class="flex-1 flex bg-white dark:bg-white/5 rounded-xl overflow-hidden relative h-[120px]"><div class="wheel-highlight"></div><div id="start-hour-wheel" class="wheel-container flex-1 z-10 text-center"></div><div id="start-min-wheel" class="wheel-container flex-1 z-10 text-center"></div><div id="start-ampm-wheel" class="wheel-container flex-1 z-10 text-center"></div></div><div class="flex items-center justify-center text-gray-400"><i data-lucide="arrow-right" class="w-4 h-4"></i></div><div class="flex-1 flex bg-white dark:bg-white/5 rounded-xl overflow-hidden relative h-[120px]"><div class="wheel-highlight"></div><div id="end-hour-wheel" class="wheel-container flex-1 z-10 text-center"></div><div id="end-min-wheel" class="wheel-container flex-1 z-10 text-center"></div><div id="end-ampm-wheel" class="wheel-container flex-1 z-10 text-center"></div></div></div></div>
+                <div><label class="block text-xs font-semibold text-ios-subtext uppercase tracking-wider mb-2">Color Tag</label><div class="flex items-center gap-3 overflow-x-auto pb-2"><button type="button" onclick="selectColor('#007AFF')" class="color-btn w-8 h-8 rounded-full bg-[#007AFF] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button><button type="button" onclick="selectColor('#FF3B30')" class="color-btn w-8 h-8 rounded-full bg-[#FF3B30] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button><button type="button" onclick="selectColor('#34C759')" class="color-btn w-8 h-8 rounded-full bg-[#34C759] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button><button type="button" onclick="selectColor('#AF52DE')" class="color-btn w-8 h-8 rounded-full bg-[#AF52DE] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button><button type="button" onclick="selectColor('#FF9500')" class="color-btn w-8 h-8 rounded-full bg-[#FF9500] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button><button type="button" onclick="selectColor('#5856D6')" class="color-btn w-8 h-8 rounded-full bg-[#5856D6] ring-2 ring-offset-2 ring-transparent hover:scale-110 transition-transform"></button><div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div><div class="relative group"><input type="color" id="custom-color-input" class="w-8 h-8 rounded-full overflow-hidden border-0 p-0 cursor-pointer" oninput="selectColor(this.value)"><div class="absolute inset-0 rounded-full ring-1 ring-inset ring-black/10 pointer-events-none"></div></div><input type="hidden" id="selected-color-value" value="#000000"></div></div>
             </div>
-
-            <!-- Modal Footer -->
-            <div class="p-6 pt-0">
-                <button onclick="handleAddTask()" class="w-full bg-black dark:bg-white text-white dark:text-black font-medium py-4 rounded-2xl shadow-lg shadow-black/10 dark:shadow-white/5 hover:shadow-black/20 active:scale-[0.98] transition-all text-lg flex items-center justify-center gap-2">
-                    <i data-lucide="plus" class="w-5 h-5"></i>
-                    Add to Schedule
-                </button>
-            </div>
+            <div class="p-6 pt-0"><button onclick="handleAddTask()" class="w-full bg-black dark:bg-white text-white dark:text-black font-medium py-4 rounded-2xl shadow-lg shadow-black/10 dark:shadow-white/5 hover:shadow-black/20 active:scale-[0.98] transition-all text-lg flex items-center justify-center gap-2"><i data-lucide="plus" class="w-5 h-5"></i>Add to Schedule</button></div>
         </div>
     </div>
 
-    <!-- Templates -->
     <template id="task-template">
         <div class="group flex gap-4 mb-6 fade-in task-card-wrapper">
-            <div class="flex flex-col items-center pt-1 flex-shrink-0 task-time-col">
-                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 task-start-time"></span>
-                <div class="h-8 w-px bg-gray-200 dark:bg-gray-700 my-1"></div>
-                <span class="text-xs font-medium text-gray-400 dark:text-gray-500 task-end-time"></span>
-            </div>
-            <div class="flex-1 bg-white dark:bg-[#2C2C2E] border border-gray-100 dark:border-white/5 rounded-2xl shadow-sm hover:shadow-md transition-all group-hover:border-gray-200 dark:group-hover:border-white/10 relative overflow-hidden task-card-inner">
+            <div class="flex flex-col items-center pt-1 flex-shrink-0 task-time-col"><span class="text-xs font-medium text-gray-500 dark:text-gray-400 task-start-time"></span><div class="h-8 w-px bg-gray-200 dark:bg-gray-700 my-1"></div><span class="text-xs font-medium text-gray-400 dark:text-gray-500 task-end-time"></span></div>
+            <div class="flex-1 bg-[#F9F9FB] dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/5 rounded-2xl shadow-sm hover:shadow-md transition-all group-hover:border-gray-300 dark:group-hover:border-white/10 relative overflow-hidden task-card-inner">
                 <div class="absolute left-0 top-0 bottom-0 w-1.5 task-color-bar"></div>
-                
-                <div class="flex items-start justify-between pl-2">
-                    <div class="flex items-start gap-4 flex-1">
-                        <div class="pt-1">
-                            <input type="checkbox" class="task-checkbox w-5 h-5 rounded-md border-gray-300 dark:border-gray-600 text-black dark:text-white focus:ring-black dark:focus:ring-white cursor-pointer accent-black dark:accent-white bg-transparent">
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-black dark:text-white text-lg leading-tight task-title transition-colors"></h4>
-                            
-                            <!-- Notes Section -->
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed task-notes hidden"></p>
-
-                            <!-- Progress Bar for active tasks -->
-                            <div class="progress-container hidden mt-3 w-full max-w-[200px] h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div class="progress-bar h-full bg-black dark:bg-white transition-all duration-500" style="width: 0%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <button class="delete-btn opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
-                        <i data-lucide="trash-2" class="task-icon"></i>
-                    </button>
-                </div>
+                <div class="flex items-start justify-between pl-2"><div class="flex items-start gap-4 flex-1"><div class="pt-1"><input type="checkbox" class="task-checkbox w-5 h-5 rounded-md border-gray-300 dark:border-gray-600 text-black dark:text-white focus:ring-black dark:focus:ring-white cursor-pointer accent-black dark:accent-white bg-transparent"></div><div class="flex-1"><h4 class="font-semibold text-black dark:text-white text-lg leading-tight task-title transition-colors"></h4><p class="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed task-notes hidden"></p><div class="progress-container hidden mt-3 w-full max-w-[200px] h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"><div class="progress-bar h-full bg-black dark:bg-white transition-all duration-500" style="width: 0%"></div></div></div></div><button class="delete-btn opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><i data-lucide="trash-2" class="task-icon"></i></button></div>
             </div>
         </div>
     </template>
 
     <script>
-        // --- Sound System ---
+        // --- GLOBALS ---
         const SoundSystem = {
             ctx: null,
-            init: function() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
-                }
-            },
-            playBeep: function() {
-                if (!this.ctx) this.init();
-                if (this.ctx.state === 'suspended') this.ctx.resume();
-
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.frequency.setValueAtTime(880, this.ctx.currentTime);
-                // Increased Volume (Gain 0.05 -> 0.3)
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.1);
-            },
-            playBell: function() {
-                if (!this.ctx) this.init();
-                if (this.ctx.state === 'suspended') this.ctx.resume();
-
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
-                // Increased Volume (Gain 0.2 -> 0.5)
-                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 1.5);
-            }
+            init: function() { if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } if (this.ctx.state === 'suspended') { this.ctx.resume(); } },
+            playBeep: function() { this.init(); const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.connect(gain); gain.connect(this.ctx.destination); osc.frequency.setValueAtTime(880, this.ctx.currentTime); gain.gain.setValueAtTime(0.3, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1); osc.start(); osc.stop(this.ctx.currentTime + 0.1); },
+            playBell: function() { this.init(); const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.connect(gain); gain.connect(this.ctx.destination); osc.frequency.setValueAtTime(523.25, this.ctx.currentTime); gain.gain.setValueAtTime(0.5, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5); osc.start(); osc.stop(this.ctx.currentTime + 1.5); }
         };
 
-        // --- State ---
         const state = {
-            today: new Date(),
-            currentMonth: new Date(),
-            selectedDate: new Date(),
+            today: new Date(), currentMonth: new Date(), selectedDate: new Date(),
+            mode: 'date', isDirty: false, editingRoutineName: null, tempTasks: [],
             tasks: JSON.parse(localStorage.getItem('planner_tasks')) || {},
             smartReminders: JSON.parse(localStorage.getItem('planner_reminders_enabled')) || false,
             darkMode: JSON.parse(localStorage.getItem('planner_dark_mode')) || false,
-            tempTime: {
-                startHour: 9, startMin: 0, startAmPm: 'AM',
-                endHour: 10, endMin: 0, endAmPm: 'AM'
-            }
+            taskLibrary: JSON.parse(localStorage.getItem('planner_library')) || [],
+            routines: JSON.parse(localStorage.getItem('planner_routines')) || {},
+            routineRules: JSON.parse(localStorage.getItem('planner_routine_rules')) || { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
+            tempTime: { startHour: 9, startMin: 0, startAmPm: 'AM', endHour: 10, endMin: 0, endAmPm: 'AM' }
         };
 
-        // --- Utils ---
         const formatDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        const saveTasks = () => {
+        const saveAll = () => {
             localStorage.setItem('planner_tasks', JSON.stringify(state.tasks));
-            updatePendingCount();
+            localStorage.setItem('planner_library', JSON.stringify(state.taskLibrary));
+            localStorage.setItem('planner_routines', JSON.stringify(state.routines));
+            localStorage.setItem('planner_routine_rules', JSON.stringify(state.routineRules));
+            updatePendingCount(); renderLibrary();
         };
         const updatePendingCount = () => {
-            const todayKey = formatDateKey(new Date());
-            const tasks = state.tasks[todayKey] || [];
-            document.getElementById('pending-count').textContent = tasks.filter(t => !t.completed).length;
+            let count = 0;
+            if (state.mode === 'date') {
+                const todayKey = formatDateKey(state.selectedDate);
+                const tasks = state.tasks[todayKey] || [];
+                count = tasks.filter(t => !t.completed).length;
+            } else if (state.mode === 'routine') { count = state.tempTasks.length; }
+            document.getElementById('pending-count').textContent = count;
         };
 
-        // --- Dark Mode ---
-        function toggleDarkMode() {
-            state.darkMode = !state.darkMode;
-            localStorage.setItem('planner_dark_mode', state.darkMode);
-            applyTheme();
-        }
-        function applyTheme() {
-            if (state.darkMode) {
-                document.documentElement.classList.add('dark');
+        // --- Modal System ---
+        let confirmCallback = null;
+        function showConfirm(title, message, callback, isDestructive = false) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-msg').textContent = message;
+            confirmCallback = callback;
+            const btn = document.getElementById('confirm-btn-action');
+            
+            // Destructive Styling (Red) vs Normal (Black/White)
+            if (isDestructive) {
+                btn.className = "flex-1 py-2.5 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors";
             } else {
-                document.documentElement.classList.remove('dark');
+                btn.className = "flex-1 py-2.5 rounded-xl text-sm font-medium bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-opacity";
             }
+
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => { modal.classList.remove('opacity-0'); modal.querySelector('div').classList.remove('scale-95'); modal.querySelector('div').classList.add('scale-100'); });
+        }
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('opacity-0'); modal.querySelector('div').classList.add('scale-95'); modal.querySelector('div').classList.remove('scale-100');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            confirmCallback = null;
+        }
+        document.getElementById('confirm-btn-action').onclick = () => {
+            if(confirmCallback) confirmCallback();
+            closeConfirmModal();
+        };
+
+        // --- Sidebar ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar'); const body = document.getElementById('app-body');
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            if (isOpen) { sidebar.classList.add('-translate-x-full'); body.classList.remove('sidebar-open'); body.classList.add('sidebar-closed'); } 
+            else { sidebar.classList.remove('-translate-x-full'); body.classList.add('sidebar-open'); body.classList.remove('sidebar-closed'); }
+        }
+        function switchTab(tabName) {
+            ['calendar', 'routines', 'library', 'settings'].forEach(t => {
+                document.getElementById(`tab-btn-${t}`).classList.remove('bg-white', 'dark:bg-white/10', 'shadow-sm', 'text-blue-500');
+                document.getElementById(`tab-btn-${t}`).classList.add('text-gray-500');
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+            });
+            const btn = document.getElementById(`tab-btn-${tabName}`);
+            btn.classList.add('bg-white', 'dark:bg-white/10', 'shadow-sm', 'text-blue-500'); btn.classList.remove('text-gray-500');
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            if(tabName === 'routines') renderRoutinesUI(); if(tabName === 'library') renderLibrary();
         }
 
-        // --- Smart Reminders ---
-        function toggleSmartReminders(e) {
-            state.smartReminders = e.target.checked;
-            localStorage.setItem('planner_reminders_enabled', state.smartReminders);
-            if (state.smartReminders) {
-                SoundSystem.init();
-                if ("Notification" in window) {
-                    if (Notification.permission === "granted") {
-                         new Notification("Smart Reminders Active", { body: "Notifications are working correctly." });
-                    } else if (Notification.permission !== "denied") {
-                        Notification.requestPermission().then(permission => {
-                            if (permission === "granted") {
-                                new Notification("Smart Reminders Enabled", { body: "You will now receive notifications." });
-                            }
-                        });
-                    }
-                }
-            }
+        // --- Routine Functions ---
+        function initSaveRoutineMode() {
+            const dateKey = formatDateKey(state.selectedDate);
+            const currentTasks = state.tasks[dateKey];
+            if (!currentTasks || currentTasks.length === 0) return showNotification("Empty Schedule", "Add tasks to today's schedule first!");
+            state.mode = 'routine'; state.isDirty = true; state.editingRoutineName = "New Routine";
+            state.tempTasks = JSON.parse(JSON.stringify(currentTasks)); renderMainHeader(); renderTasks();
         }
-
-        // --- Wheel Picker Logic ---
-        function createWheel(elementId, items, initialValue, onChange) {
-            const container = document.getElementById(elementId);
-            container.innerHTML = '';
-            
-            // Padding items using DIVS instead of CSS padding to fix alignment
-            const spacerTop = document.createElement('div');
-            spacerTop.className = "wheel-item pointer-events-none opacity-0";
-            container.appendChild(spacerTop);
-
-            items.forEach((itemVal) => {
-                const div = document.createElement('div');
-                div.className = `wheel-item ${itemVal == initialValue ? 'active' : ''}`;
-                div.textContent = String(itemVal).padStart(2, '0');
-                div.onclick = () => {
-                    const idx = items.indexOf(itemVal);
-                    container.scrollTo({ top: idx * 40, behavior: 'smooth' });
-                };
-                container.appendChild(div);
-            });
-            
-            // Bottom Padding
-            const spacerBottom = document.createElement('div');
-            spacerBottom.className = "wheel-item pointer-events-none opacity-0";
-            container.appendChild(spacerBottom);
-            // Extra spacer for good measure to ensure scrolling works fully
-            container.appendChild(spacerBottom.cloneNode());
-
-            // --- Scroll Snap Logic ---
-            let scrollTimeout;
-            let isSnapping = false;
-
-            const snapToNearest = () => {
-                const index = Math.round(container.scrollTop / 40);
-                const targetY = index * 40;
-                
-                // Only snap if we aren't already there (tolerance 1px)
-                if (Math.abs(container.scrollTop - targetY) > 1) {
-                    isSnapping = true;
-                    container.scrollTo({ top: targetY, behavior: 'smooth' });
-                    // Update active class logic immediately or after?
-                    // Let's do it after via the timeout recursion or here directly.
-                    // Doing it here visually updates faster.
-                    updateActiveItem(index);
-                } else {
-                    updateActiveItem(index);
-                }
+        function editRoutine(name) {
+            const proceed = () => {
+                state.mode = 'routine'; state.isDirty = false; state.editingRoutineName = name;
+                state.tempTasks = JSON.parse(JSON.stringify(state.routines[name]));
+                renderMainHeader(); renderTasks();
+                if(!document.getElementById('sidebar').classList.contains('-translate-x-full')) toggleSidebar();
             };
-
-            const updateActiveItem = (index) => {
-                const wheelItems = container.querySelectorAll('.wheel-item:not(.pointer-events-none)');
-                wheelItems.forEach(item => item.classList.remove('active'));
-                
-                if(wheelItems[index]) {
-                    wheelItems[index].classList.add('active');
-                    let val = wheelItems[index].textContent;
-                    if(!isNaN(parseInt(val))) val = parseInt(val);
-                    onChange(val);
-                }
+            if(state.isDirty) showConfirm("Unsaved Changes", "Discard current changes?", proceed, true);
+            else proceed();
+        }
+        function saveRoutineEdits() {
+            const newName = document.getElementById('edit-routine-name').value;
+            if(!newName) return showNotification("Error", "Please name your routine");
+            if(state.editingRoutineName !== newName && state.routines[state.editingRoutineName]) delete state.routines[state.editingRoutineName];
+            state.routines[newName] = state.tempTasks;
+            if(state.editingRoutineName !== newName) { Object.keys(state.routineRules).forEach(k => { if(state.routineRules[k] === state.editingRoutineName) state.routineRules[k] = newName; }); }
+            saveAll(); state.editingRoutineName = newName; state.isDirty = false;
+            renderMainHeader(); renderRoutinesUI();
+            const btn = document.getElementById('save-routine-btn');
+            btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i>`; btn.classList.remove('bg-blue-500'); btn.classList.add('bg-green-500', 'pointer-events-none');
+            setTimeout(() => { btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i>`; btn.classList.add('bg-blue-500'); btn.classList.remove('bg-green-500', 'pointer-events-none'); lucide.createIcons(); }, 1000);
+            lucide.createIcons();
+        }
+        function attemptExitRoutineMode() {
+            if (state.isDirty) showConfirm("Unsaved Changes", "Discard changes and return to schedule?", exitRoutineMode, true);
+            else exitRoutineMode();
+        }
+        function exitRoutineMode() {
+            state.mode = 'date'; state.isDirty = false; state.editingRoutineName = null; state.tempTasks = [];
+            renderMainHeader(); renderTasks();
+        }
+        function applyRoutineToCurrent(name) {
+            const doApply = () => {
+                if(state.mode === 'routine') exitRoutineMode(); 
+                const dateString = state.selectedDate.toLocaleDateString();
+                showConfirm("Apply Routine", `Replace schedule for ${dateString} with "${name}"?`, () => {
+                    const routineTasks = state.routines[name]; const dateKey = formatDateKey(state.selectedDate);
+                    state.tasks[dateKey] = routineTasks.map(rt => ({ id: Date.now() + Math.random(), title: rt.title, notes: rt.notes, color: rt.color, startTime: rt.startTime, endTime: rt.endTime, completed: false, notifiedStart: false }));
+                    saveAll(); renderTasks(); renderCalendar();
+                }, false);
             };
-
-            container.addEventListener('scroll', () => {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    isSnapping = false;
-                    snapToNearest();
-                }, 80); // Debounce time
-            });
-
-            // --- Single Step Wheel Scroll ---
-            container.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const direction = Math.sign(e.deltaY);
-                container.scrollBy({
-                    top: direction * 40,
-                    behavior: 'smooth'
+            if(state.mode === 'routine' && state.isDirty) showConfirm("Unsaved Changes", "Discard routine edits to apply this routine?", doApply, true);
+            else doApply();
+        }
+        function deleteRoutine(name) {
+            showConfirm("Delete Routine", `Delete "${name}" permanently?`, () => {
+                delete state.routines[name];
+                Object.keys(state.routineRules).forEach(day => { if(state.routineRules[day] === name) state.routineRules[day] = null; });
+                saveAll(); renderRoutinesUI();
+                if(state.mode === 'routine' && state.editingRoutineName === name) exitRoutineMode();
+            }, true);
+        }
+        function updateRoutineRule(dayIndex, routineName) { state.routineRules[dayIndex] = routineName === "" ? null : routineName; saveAll(); }
+        function bulkSetRules(type) {
+            const routineNames = Object.keys(state.routines);
+            if(routineNames.length === 0) return showNotification("Info", "Create a routine first.");
+            const routine = prompt("Enter exact routine name to apply:", routineNames[0]); 
+            if(!routine || !state.routines[routine]) return;
+            if(type === 'all') for(let i=0; i<7; i++) state.routineRules[i] = routine;
+            else if (type === 'weekdays') for(let i=1; i<=5; i++) state.routineRules[i] = routine;
+            else if (type === 'weekend') { state.routineRules[0] = routine; state.routineRules[6] = routine; }
+            saveAll(); renderRoutinesUI();
+        }
+        function resetRules() {
+            showConfirm("Reset Rules", "Clear all auto-fill rules?", () => {
+                for(let i=0; i<7; i++) state.routineRules[i] = null;
+                saveAll(); renderRoutinesUI();
+            }, true);
+        }
+        function renderRoutinesUI() {
+            const list = document.getElementById('routines-list'); const rules = document.getElementById('routine-rules-container');
+            list.innerHTML = ''; rules.innerHTML = '';
+            const routineNames = Object.keys(state.routines);
+            if(routineNames.length === 0) { list.innerHTML = `<div class="text-xs text-gray-500 italic">No saved routines.</div>`; }
+            else {
+                routineNames.forEach(name => {
+                    const div = document.createElement('div'); div.draggable = true;
+                    div.className = "flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-lg border border-black/5 dark:border-white/5 group cursor-grab active:cursor-grabbing";
+                    div.innerHTML = `<span class="text-sm font-medium text-black dark:text-white">${name}</span><div class="flex gap-2"><button onclick="applyRoutineToCurrent('${name.replace(/'/g, "\\'")}')" class="text-xs bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors">Apply</button><button onclick="editRoutine('${name.replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-blue-500"><i data-lucide="edit-2" class="w-3 h-3"></i></button><button onclick="deleteRoutine('${name.replace(/'/g, "\\'")}')" class="text-gray-400 hover:text-red-500"><i data-lucide="trash" class="w-3 h-3"></i></button></div>`;
+                    div.ondragstart = (e) => { e.dataTransfer.setData("type", "routine"); e.dataTransfer.setData("name", name); div.classList.add('dragging'); };
+                    div.ondragend = () => div.classList.remove('dragging');
+                    list.appendChild(div);
                 });
-            });
-
-            // --- Drag Logic ---
-            let isDown = false;
-            let startY;
-            let scrollTop;
-
-            container.addEventListener('mousedown', (e) => {
-                isDown = true;
-                startY = e.pageY - container.offsetTop;
-                scrollTop = container.scrollTop;
-                container.classList.add('cursor-grabbing');
-            });
-            container.addEventListener('mouseleave', () => {
-                isDown = false;
-                container.classList.remove('cursor-grabbing');
-            });
-            container.addEventListener('mouseup', () => {
-                isDown = false;
-                container.classList.remove('cursor-grabbing');
-            });
-            container.addEventListener('mousemove', (e) => {
-                if(!isDown) return;
-                e.preventDefault();
-                const y = e.pageY - container.offsetTop;
-                const walk = (y - startY) * 2; // Scroll-fast
-                container.scrollTop = scrollTop - walk;
-            });
-
-            // Touch support for dragging
-            container.addEventListener('touchstart', (e) => {
-                isDown = true;
-                startY = e.touches[0].pageY - container.offsetTop;
-                scrollTop = container.scrollTop;
-            });
-            container.addEventListener('touchend', () => isDown = false);
-            container.addEventListener('touchmove', (e) => {
-                if(!isDown) return;
-                const y = e.touches[0].pageY - container.offsetTop;
-                const walk = (y - startY) * 2; 
-                container.scrollTop = scrollTop - walk;
-            });
-
-
-            // Initial Scroll
-            setTimeout(() => {
-                const idx = items.indexOf(initialValue);
-                if(idx !== -1) container.scrollTop = idx * 40;
-            }, 100);
-        }
-
-        function initTimePickers() {
-            const now = new Date();
-            let h = now.getHours();
-            const m = Math.floor(now.getMinutes() / 5) * 5;
-            
-            state.tempTime.startAmPm = h >= 12 ? 'PM' : 'AM';
-            state.tempTime.startHour = h % 12 || 12;
-            state.tempTime.startMin = m;
-
-            let nextH = h + 1;
-            state.tempTime.endAmPm = nextH >= 24 ? 'AM' : (nextH >= 12 ? 'PM' : 'AM');
-            if(nextH >= 24) nextH -= 24;
-            state.tempTime.endHour = nextH % 12 || 12;
-            state.tempTime.endMin = m;
-
-            const hours = [1,2,3,4,5,6,7,8,9,10,11,12];
-            const mins = Array.from({length: 60}, (_, i) => i);
-            const ampm = ['AM', 'PM'];
-
-            createWheel('start-hour-wheel', hours, state.tempTime.startHour, (v) => state.tempTime.startHour = v);
-            createWheel('start-min-wheel', mins, state.tempTime.startMin, (v) => state.tempTime.startMin = v);
-            createWheel('start-ampm-wheel', ampm, state.tempTime.startAmPm, (v) => state.tempTime.startAmPm = v);
-
-            createWheel('end-hour-wheel', hours, state.tempTime.endHour, (v) => state.tempTime.endHour = v);
-            createWheel('end-min-wheel', mins, state.tempTime.endMin, (v) => state.tempTime.endMin = v);
-            createWheel('end-ampm-wheel', ampm, state.tempTime.endAmPm, (v) => state.tempTime.endAmPm = v);
-        }
-
-        // --- Color Picker ---
-        function selectColor(color) {
-            document.getElementById('selected-color-value').value = color;
-            document.querySelectorAll('.color-btn').forEach(btn => {
-                if(btn.onclick.toString().includes(color)) {
-                    btn.classList.add('ring-gray-400', 'dark:ring-white');
-                    btn.classList.remove('ring-transparent');
-                } else {
-                    btn.classList.remove('ring-gray-400', 'dark:ring-white');
-                    btn.classList.add('ring-transparent');
-                }
-            });
-        }
-
-        // --- Rendering ---
-        function renderCalendar() {
-            const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = '';
-            const year = state.currentMonth.getFullYear();
-            const month = state.currentMonth.getMonth();
-            document.getElementById('calendar-month-year').textContent = state.currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const prevMonthDays = new Date(year, month, 0).getDate();
-
-            for (let i = firstDay - 1; i >= 0; i--) {
-                const d = document.createElement('div');
-                d.className = 'h-10 w-10 flex items-center justify-center text-gray-300 dark:text-gray-700 text-sm cursor-default';
-                d.textContent = prevMonthDays - i;
-                grid.appendChild(d);
             }
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            days.forEach((day, idx) => {
+                const row = document.createElement('div'); row.className = "flex items-center justify-between";
+                let options = `<option value="">None</option>`;
+                routineNames.forEach(rn => { options += `<option value="${rn}" ${state.routineRules[idx] === rn ? 'selected' : ''}>${rn}</option>`; });
+                row.innerHTML = `<span class="text-xs text-gray-600 dark:text-gray-400 w-20">${day}</span><select onchange="updateRoutineRule(${idx}, this.value)" class="flex-1 text-xs bg-white dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-black dark:text-white outline-none">${options}</select>`;
+                rules.appendChild(row);
+            });
+            lucide.createIcons();
+        }
 
+        // --- Other Core Logic ---
+        function renderMainHeader() {
+            if (state.mode === 'routine') {
+                document.getElementById('header-date-mode').classList.add('hidden'); document.getElementById('header-routine-mode').classList.remove('hidden');
+                document.getElementById('view-schedule-btn').classList.remove('hidden'); document.getElementById('edit-routine-name').value = state.editingRoutineName;
+            } else {
+                document.getElementById('header-date-mode').classList.remove('hidden'); document.getElementById('header-routine-mode').classList.add('hidden');
+                document.getElementById('view-schedule-btn').classList.add('hidden');
+            }
+            updatePendingCount();
+        }
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid'); grid.innerHTML = '';
+            const year = state.currentMonth.getFullYear(); const month = state.currentMonth.getMonth();
+            document.getElementById('calendar-month-year').textContent = state.currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate(); const prevMonthDays = new Date(year, month, 0).getDate();
+            for (let i = firstDay - 1; i >= 0; i--) { const d = document.createElement('div'); d.className = 'h-8 flex items-center justify-center text-gray-300 dark:text-gray-700 text-xs cursor-default'; d.textContent = prevMonthDays - i; grid.appendChild(d); }
             for (let i = 1; i <= daysInMonth; i++) {
-                const btn = document.createElement('button');
-                const date = new Date(year, month, i);
-                const dateKey = formatDateKey(date);
-                const isSelected = formatDateKey(state.selectedDate) === dateKey;
-                const isToday = formatDateKey(state.today) === dateKey;
-                const hasTasks = state.tasks[dateKey] && state.tasks[dateKey].length > 0;
-
-                let cls = 'day-cell h-10 w-10 flex flex-col items-center justify-center text-sm rounded-full relative ';
-                if (isSelected) cls += 'bg-black dark:bg-white text-white dark:text-black shadow-lg font-bold';
-                else if (isToday) cls += 'text-ios-blue font-bold bg-blue-50 dark:bg-blue-900/20';
-                else cls += 'text-black dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10';
-
-                btn.className = cls;
-                btn.innerHTML = `<span>${i}</span>${hasTasks && !isSelected ? `<span class="w-1 h-1 rounded-full bg-black/40 dark:bg-white/40 mt-0.5"></span>` : ''}`;
+                const btn = document.createElement('button'); const date = new Date(year, month, i); const dateKey = formatDateKey(date);
+                const isSelected = formatDateKey(state.selectedDate) === dateKey; const isToday = formatDateKey(state.today) === dateKey; const hasTasks = state.tasks[dateKey] && state.tasks[dateKey].length > 0;
+                let cls = 'day-cell h-8 w-8 flex flex-col items-center justify-center text-xs rounded-full relative mx-auto ';
+                if (isSelected) cls += 'bg-black dark:bg-white text-white dark:text-black font-bold'; else if (isToday) cls += 'text-blue-500 font-bold bg-blue-50 dark:bg-blue-900/20'; else cls += 'text-black dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10';
+                btn.className = cls; btn.innerHTML = `<span>${i}</span>${hasTasks && !isSelected ? `<span class="w-1 h-1 rounded-full bg-black/40 dark:bg-white/40 absolute bottom-1"></span>` : ''}`;
                 btn.onclick = () => {
-                    state.selectedDate = date;
-                    renderCalendar();
-                    renderTasks();
+                    const proceed = () => { state.selectedDate = date; if(state.mode === 'routine') exitRoutineMode(); checkAutoFill(date); renderCalendar(); renderTasks(); };
+                    if (state.mode === 'routine' && state.isDirty) showConfirm("Unsaved Changes", "Discard routine changes?", proceed, true); else proceed();
+                };
+                btn.ondragover = (e) => e.preventDefault();
+                btn.ondrop = (e) => {
+                    e.preventDefault(); const type = e.dataTransfer.getData("type"); const name = e.dataTransfer.getData("name");
+                    if(type === 'routine' && name && state.routines[name]) {
+                        showConfirm("Apply Routine", `Apply "${name}" to ${date.toLocaleDateString()}?`, () => {
+                            const routineTasks = state.routines[name]; state.tasks[dateKey] = routineTasks.map(rt => ({ id: Date.now() + Math.random(), title: rt.title, notes: rt.notes, color: rt.color, startTime: rt.startTime, endTime: rt.endTime, completed: false, notifiedStart: false }));
+                            saveAll(); state.selectedDate = date; if(state.mode === 'routine') exitRoutineMode(); renderCalendar(); renderTasks();
+                        }, false);
+                    }
                 };
                 grid.appendChild(btn);
             }
         }
-
-        function renderTasks() {
-            const container = document.getElementById('tasks-container');
-            const dateKey = formatDateKey(state.selectedDate);
-            const tasks = state.tasks[dateKey] || [];
-            
-            tasks.sort((a, b) => a.startTime.localeCompare(b.startTime));
-            
-            document.getElementById('selected-date-display').textContent = 
-                dateKey === formatDateKey(new Date()) ? 'Today' : state.selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
-            container.innerHTML = '';
-            if (tasks.length === 0) {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-ios-subtext opacity-60 fade-in">
-                        <i data-lucide="calendar-check" class="w-12 h-12 mb-4 stroke-1"></i>
-                        <p>No events scheduled</p>
-                    </div>`;
-                lucide.createIcons();
-                return;
+        function checkAutoFill(date) {
+            const dateKey = formatDateKey(date); const dayIndex = date.getDay();
+            if(!state.tasks[dateKey] || state.tasks[dateKey].length === 0) {
+                const routineName = state.routineRules[dayIndex];
+                if(routineName && state.routines[routineName]) {
+                    const tasks = state.routines[routineName];
+                    state.tasks[dateKey] = tasks.map(rt => ({ id: Date.now() + Math.random(), title: rt.title, notes: rt.notes, color: rt.color, startTime: rt.startTime, endTime: rt.endTime, completed: false, notifiedStart: false }));
+                    saveAll();
+                }
             }
-
-            // Helper to convert 24h string to 12h string for display
-            const toAmPm = (timeStr) => {
-                if (!timeStr) return '';
-                let [h, m] = timeStr.split(':');
-                h = parseInt(h);
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                h = h % 12 || 12;
-                return `${h}:${m} ${ampm}`;
-            };
-
+        }
+        function toggleDarkMode(enabled) { state.darkMode = enabled; localStorage.setItem('planner_dark_mode', state.darkMode); applyTheme(); }
+        function applyTheme() { if (state.darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); const toggle = document.getElementById('darkmode-toggle'); if(toggle) toggle.checked = state.darkMode; }
+        function toggleSmartReminders(e) { state.smartReminders = e.target.checked; localStorage.setItem('planner_reminders_enabled', state.smartReminders); if(state.smartReminders) { SoundSystem.init(); if("Notification" in window && Notification.permission !== "granted") Notification.requestPermission(); } }
+        
+        // --- Render Tasks & Library ---
+        function renderTasks() {
+            const container = document.getElementById('tasks-container'); container.innerHTML = '';
+            let tasks = (state.mode === 'date') ? (state.tasks[formatDateKey(state.selectedDate)] || []) : state.tempTasks;
+            if (state.mode === 'date') document.getElementById('selected-date-display').textContent = formatDateKey(state.selectedDate) === formatDateKey(new Date()) ? 'Today' : state.selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            tasks.sort((a, b) => a.startTime.localeCompare(b.startTime));
+            if (tasks.length === 0) { container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-ios-subtext opacity-60 fade-in pb-20"><i data-lucide="calendar-check" class="w-12 h-12 mb-4 stroke-1"></i><p>No tasks scheduled</p></div>`; lucide.createIcons(); return; }
+            const toAmPm = (timeStr) => { if (!timeStr) return ''; let [h, m] = timeStr.split(':'); h = parseInt(h); const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${h}:${m} ${ampm}`; };
             const tmpl = document.getElementById('task-template');
             tasks.forEach((task, idx) => {
                 const clone = tmpl.content.cloneNode(true);
-                
-                clone.querySelector('.task-start-time').textContent = toAmPm(task.startTime);
-                clone.querySelector('.task-end-time').textContent = toAmPm(task.endTime);
-                clone.querySelector('.task-title').textContent = task.title;
-                
-                if (task.notes) {
-                    const noteEl = clone.querySelector('.task-notes');
-                    noteEl.textContent = task.notes;
-                    noteEl.classList.remove('hidden');
-                }
-
+                clone.querySelector('.task-start-time').textContent = toAmPm(task.startTime); clone.querySelector('.task-end-time').textContent = toAmPm(task.endTime);
+                clone.querySelector('.task-title').textContent = task.title; if (task.notes) { const noteEl = clone.querySelector('.task-notes'); noteEl.textContent = task.notes; noteEl.classList.remove('hidden'); }
                 clone.querySelector('.task-color-bar').style.backgroundColor = task.color;
-
-                const cb = clone.querySelector('.task-checkbox');
-                cb.checked = task.completed;
-                cb.onchange = () => {
-                    task.completed = cb.checked;
-                    saveTasks();
-                    renderTasks();
-                };
-
+                const cb = clone.querySelector('.task-checkbox'); cb.checked = task.completed;
+                cb.onchange = () => { task.completed = cb.checked; if(state.mode === 'date') saveAll(); else state.isDirty = true; renderTasks(); };
                 clone.querySelector('.delete-btn').onclick = () => {
-                    state.tasks[dateKey].splice(idx, 1);
-                    if(state.tasks[dateKey].length===0) delete state.tasks[dateKey];
-                    saveTasks();
-                    renderTasks();
-                    renderCalendar();
+                    showConfirm("Delete Task", "Are you sure you want to remove this task?", () => {
+                        if(state.mode === 'date') { const dateKey = formatDateKey(state.selectedDate); state.tasks[dateKey].splice(idx, 1); if(state.tasks[dateKey].length===0) delete state.tasks[dateKey]; saveAll(); }
+                        else { state.tempTasks.splice(idx, 1); state.isDirty = true; } renderTasks(); if(state.mode==='date') renderCalendar();
+                    }, true);
                 };
-
-                if (task.completed) {
-                     clone.querySelector('.task-title').classList.add('line-through', 'text-gray-400', 'dark:text-gray-600');
-                }
-
+                if (task.completed) clone.querySelector('.task-title').classList.add('line-through', 'text-gray-400', 'dark:text-gray-600');
                 container.appendChild(clone);
             });
             lucide.createIcons();
         }
-
-        function get24hTime(h, m, ampm) {
-            let hour = parseInt(h);
-            if (ampm === 'PM' && hour !== 12) hour += 12;
-            if (ampm === 'AM' && hour === 12) hour = 0;
-            return `${String(hour).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-        }
-
         function handleAddTask() {
-            const title = document.getElementById('task-title').value;
-            if(!title) return;
-
-            const notes = document.getElementById('task-notes').value;
-            const color = document.getElementById('selected-color-value').value;
-            
-            const startTime = get24hTime(state.tempTime.startHour, state.tempTime.startMin, state.tempTime.startAmPm);
-            const endTime = get24hTime(state.tempTime.endHour, state.tempTime.endMin, state.tempTime.endAmPm);
-
-            const dateKey = formatDateKey(state.selectedDate);
-            if (!state.tasks[dateKey]) state.tasks[dateKey] = [];
-
-            state.tasks[dateKey].push({
-                id: Date.now(),
-                title, notes, color,
-                startTime, endTime,
-                completed: false,
-                notified25: false, notified50: false, notified75: false, notifiedStart: false, notifiedEnd: false
-            });
-
-            saveTasks();
-            closeAddTaskModal();
-            renderTasks();
-            renderCalendar();
+            const title = document.getElementById('task-title').value; if(!title) return;
+            const notes = document.getElementById('task-notes').value; const color = document.getElementById('selected-color-value').value;
+            const startTime = get24hTime(state.tempTime.startHour, state.tempTime.startMin, state.tempTime.startAmPm); const endTime = get24hTime(state.tempTime.endHour, state.tempTime.endMin, state.tempTime.endAmPm);
+            const newTask = { id: Date.now(), title, notes, color, startTime, endTime, completed: false, notifiedStart: false };
+            if (state.mode === 'date') { const dateKey = formatDateKey(state.selectedDate); if (!state.tasks[dateKey]) state.tasks[dateKey] = []; state.tasks[dateKey].push(newTask); addToLibrary(newTask); saveAll(); }
+            else { state.tempTasks.push(newTask); state.isDirty = true; }
+            closeAddTaskModal(); renderTasks(); if(state.mode === 'date') renderCalendar();
         }
-
-        // --- Modals ---
-        function openAddTaskModal() {
-            const overlay = document.getElementById('modal-overlay');
-            const content = document.getElementById('modal-content');
-            overlay.classList.remove('hidden');
-            
-            document.getElementById('task-title').value = '';
-            document.getElementById('task-notes').value = '';
-            selectColor('#007AFF');
-            initTimePickers();
-
-            requestAnimationFrame(() => {
-                overlay.classList.remove('opacity-0');
-                content.classList.remove('scale-95');
-                content.classList.add('scale-100');
+        function addToLibrary(task) { const exists = state.taskLibrary.some(t => t.title.toLowerCase() === task.title.toLowerCase()); if(!exists) { state.taskLibrary.push({ title: task.title, color: task.color, notes: task.notes }); saveAll(); } }
+        function renderLibrary() {
+            const container = document.getElementById('task-library-list'); const datalist = document.getElementById('library-suggestions'); container.innerHTML = ''; datalist.innerHTML = '';
+            if (state.taskLibrary.length === 0) { container.innerHTML = `<div class="text-center text-gray-400 py-4 text-xs">Library is empty.</div>`; return; }
+            state.taskLibrary.forEach(item => { const opt = document.createElement('option'); opt.value = item.title; datalist.appendChild(opt); });
+            state.taskLibrary.forEach((item, index) => {
+                const div = document.createElement('div'); div.draggable = true;
+                div.className = "flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-lg border border-black/5 dark:border-white/5 hover:border-blue-500 cursor-grab active:cursor-grabbing group";
+                div.innerHTML = `<div class="flex items-center gap-3"><div class="w-3 h-3 rounded-full" style="background-color: ${item.color}"></div><span class="text-sm font-medium text-black dark:text-white">${item.title}</span></div><button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500" onclick="event.stopPropagation(); deleteFromLibrary(${index})"><i data-lucide="trash" class="w-3 h-3"></i></button>`;
+                div.ondragstart = (e) => { e.dataTransfer.setData("type", "library-item"); e.dataTransfer.setData("index", index); div.classList.add('dragging'); };
+                div.ondragend = () => div.classList.remove('dragging');
+                div.onclick = () => { openAddTaskModal(); document.getElementById('task-title').value = item.title; document.getElementById('task-notes').value = item.notes || ''; selectColor(item.color); };
+                container.appendChild(div);
             });
-        }
-
-        function closeAddTaskModal() {
-            const overlay = document.getElementById('modal-overlay');
-            const content = document.getElementById('modal-content');
-            overlay.classList.add('opacity-0');
-            content.classList.remove('scale-100');
-            content.classList.add('scale-95');
-            setTimeout(() => overlay.classList.add('hidden'), 300);
-        }
-
-        // --- Notifications Loop ---
-        setInterval(() => {
-            if(!state.smartReminders) return;
-
-            const now = new Date();
-            const dateKey = formatDateKey(now);
-            const tasks = state.tasks[dateKey] || [];
-            
-            tasks.forEach(task => {
-                if(task.completed) return;
-                
-                const [sH, sM] = task.startTime.split(':').map(Number);
-                const [eH, eM] = task.endTime.split(':').map(Number);
-                
-                const start = new Date(now); start.setHours(sH, sM, 0, 0);
-                const end = new Date(now); end.setHours(eH, eM, 0, 0);
-                
-                const duration = end - start;
-                const elapsed = now - start;
-                const progress = elapsed / duration;
-
-                // Start Notification
-                if(now >= start && !task.notifiedStart) {
-                    SoundSystem.playBell();
-                    notify(`Starting: ${task.title}`, task.notes || "Time to focus.");
-                    task.notifiedStart = true; saveTasks();
-                }
-
-                // Progress Notifications (Simplified Logic for reliability)
-                if(progress >= 0.25 && !task.notified25) {
-                     SoundSystem.playBeep(); notify("25% Complete", task.title); task.notified25 = true; saveTasks();
-                }
-                if(progress >= 0.50 && !task.notified50) {
-                     SoundSystem.playBeep(); notify("Halfway There", task.title); task.notified50 = true; saveTasks();
-                }
-                if(progress >= 0.75 && !task.notified75) {
-                     SoundSystem.playBeep(); notify("75% - Almost Done", task.title); task.notified75 = true; saveTasks();
-                }
-
-                // End Notification
-                if(now >= end && !task.notifiedEnd) {
-                    SoundSystem.playBell();
-                    notify("Time's Up", `${task.title} should be finished.`);
-                    task.notifiedEnd = true; saveTasks();
-                }
-            });
-        }, 1000);
-
-        function notify(title, body) {
-            const area = document.getElementById('notification-area');
-            const el = document.createElement('div');
-            el.className = 'bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-gray-200 dark:border-white/10 text-black dark:text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 transform transition-all duration-300 translate-y-full opacity-0 pointer-events-auto min-w-[280px]';
-            el.innerHTML = `<div class="bg-black dark:bg-white text-white dark:text-black p-1.5 rounded-full"><i data-lucide="bell" class="w-3 h-3"></i></div><div><p class="text-sm font-bold">${title}</p><p class="text-xs opacity-80">${body}</p></div>`;
-            area.appendChild(el);
             lucide.createIcons();
-            requestAnimationFrame(() => el.classList.remove('translate-y-full', 'opacity-0'));
-            setTimeout(() => { el.classList.add('translate-y-2', 'opacity-0'); setTimeout(()=>el.remove(), 300); }, 4000);
-
-            // Native - Removed document.hidden check so it always fires if permitted
-            if("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, { body });
-            }
         }
+        function deleteFromLibrary(index) { showConfirm("Delete Item", "Remove this from library?", () => { state.taskLibrary.splice(index, 1); saveAll(); }, true); }
+        function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; document.getElementById('tasks-container').classList.add('drag-over'); }
+        function handleDropOnSchedule(e) {
+            e.preventDefault(); document.getElementById('tasks-container').classList.remove('drag-over');
+            const type = e.dataTransfer.getData("type");
+            if (type === 'library-item') { const index = e.dataTransfer.getData("index"); const item = state.taskLibrary[index]; if (item) { openAddTaskModal(); document.getElementById('task-title').value = item.title; document.getElementById('task-notes').value = item.notes || ''; selectColor(item.color); } }
+        }
+
+        // --- Modal & Init ---
+        function openAddTaskModal() { const overlay = document.getElementById('modal-overlay'); const content = document.getElementById('modal-content'); overlay.classList.remove('hidden'); document.getElementById('task-title').value = ''; document.getElementById('task-notes').value = ''; selectColor('#007AFF'); initTimePickers(); renderLibrary(); requestAnimationFrame(() => { overlay.classList.remove('opacity-0'); content.classList.remove('scale-95'); content.classList.add('scale-100'); }); }
+        function closeAddTaskModal() { const overlay = document.getElementById('modal-overlay'); const content = document.getElementById('modal-content'); overlay.classList.add('opacity-0'); content.classList.remove('scale-100'); content.classList.add('scale-95'); setTimeout(() => overlay.classList.add('hidden'), 300); }
+        function showNotification(title, body) { const area = document.getElementById('notification-area'); const el = document.createElement('div'); el.className = 'bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-gray-200 dark:border-white/10 text-black dark:text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 transform transition-all duration-300 translate-y-full opacity-0 pointer-events-auto min-w-[280px]'; el.innerHTML = `<div class="bg-black dark:bg-white text-white dark:text-black p-1.5 rounded-full"><i data-lucide="bell" class="w-3 h-3"></i></div><div><p class="text-sm font-bold">${title}</p><p class="text-xs opacity-80">${body}</p></div>`; area.appendChild(el); lucide.createIcons(); requestAnimationFrame(() => el.classList.remove('translate-y-full', 'opacity-0')); setTimeout(() => { el.classList.add('translate-y-2', 'opacity-0'); setTimeout(()=>el.remove(), 300); }, 4000); if("Notification" in window && Notification.permission === "granted") new Notification(title, { body }); }
+        function get24hTime(h, m, ampm) { let hour = parseInt(h); if (ampm === 'PM' && hour !== 12) hour += 12; if (ampm === 'AM' && hour === 12) hour = 0; return `${String(hour).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+        function createWheel(elementId, items, initialValue, onChange) { const container = document.getElementById(elementId); container.innerHTML = ''; const itemHeight = 40; const allItems = [...items, ...items, ...items]; const spacerTop = document.createElement('div'); spacerTop.className = "wheel-item pointer-events-none opacity-0"; container.appendChild(spacerTop); allItems.forEach((itemVal, index) => { const div = document.createElement('div'); div.className = `wheel-item`; div.textContent = String(itemVal).padStart(2, '0'); div.onclick = () => container.scrollTo({ top: index * itemHeight, behavior: 'smooth' }); container.appendChild(div); }); const spacerBottom = document.createElement('div'); spacerBottom.className = "wheel-item pointer-events-none opacity-0"; container.appendChild(spacerBottom); container.appendChild(spacerBottom.cloneNode()); const initialIdx = items.indexOf(initialValue); const middleSetOffset = items.length * itemHeight; setTimeout(() => { container.scrollTop = middleSetOffset + (initialIdx * itemHeight); updateActiveState(); }, 0); let scrollTimeout; const handleScroll = () => { const scrollTop = container.scrollTop; const totalHeight = items.length * itemHeight; if (scrollTop < totalHeight / 2) container.scrollTop = scrollTop + totalHeight; else if (scrollTop > totalHeight * 2.5) container.scrollTop = scrollTop - totalHeight; clearTimeout(scrollTimeout); scrollTimeout = setTimeout(() => { const index = Math.round(container.scrollTop / itemHeight); const targetY = index * itemHeight; container.scrollTo({ top: targetY, behavior: 'smooth' }); updateActiveState(index); }, 80); }; const updateActiveState = (forceIndex) => { const index = forceIndex !== undefined ? forceIndex : Math.round(container.scrollTop / itemHeight); const wheelItems = container.querySelectorAll('.wheel-item:not(.pointer-events-none)'); wheelItems.forEach(item => item.classList.remove('active')); if(wheelItems[index]) { wheelItems[index].classList.add('active'); let val = wheelItems[index].textContent; if(!isNaN(parseInt(val))) val = parseInt(val); onChange(val); } }; container.addEventListener('scroll', handleScroll); container.addEventListener('wheel', (e) => { e.preventDefault(); container.scrollBy({ top: Math.sign(e.deltaY) * itemHeight, behavior: 'smooth' }); }); }
+        function initTimePickers() { const now = new Date(); let h = now.getHours(); const m = Math.floor(now.getMinutes() / 5) * 5; state.tempTime.startAmPm = h >= 12 ? 'PM' : 'AM'; state.tempTime.startHour = h % 12 || 12; state.tempTime.startMin = m; let nextH = h + 1; state.tempTime.endAmPm = nextH >= 24 ? 'AM' : (nextH >= 12 ? 'PM' : 'AM'); if(nextH >= 24) nextH -= 24; state.tempTime.endHour = nextH % 12 || 12; state.tempTime.endMin = m; const hours = [12,1,2,3,4,5,6,7,8,9,10,11]; const mins = Array.from({length: 60}, (_, i) => i); const ampm = ['AM', 'PM']; createWheel('start-hour-wheel', hours, state.tempTime.startHour, (v) => state.tempTime.startHour = v); createWheel('start-min-wheel', mins, state.tempTime.startMin, (v) => state.tempTime.startMin = v); createWheel('start-ampm-wheel', ampm, state.tempTime.startAmPm, (v) => state.tempTime.startAmPm = v); createWheel('end-hour-wheel', hours, state.tempTime.endHour, (v) => state.tempTime.endHour = v); createWheel('end-min-wheel', mins, state.tempTime.endMin, (v) => state.tempTime.endMin = v); createWheel('end-ampm-wheel', ampm, state.tempTime.endAmPm, (v) => state.tempTime.endAmPm = v); }
+        function selectColor(color) { document.getElementById('selected-color-value').value = color; document.querySelectorAll('.color-btn').forEach(btn => { if(btn.onclick.toString().includes(color)) { btn.classList.add('ring-gray-400', 'dark:ring-white'); btn.classList.remove('ring-transparent'); } else { btn.classList.remove('ring-gray-400', 'dark:ring-white'); btn.classList.add('ring-transparent'); } }); }
 
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme();
-            const toggle = document.getElementById('smart-reminders-toggle');
-            toggle.checked = state.smartReminders;
-            toggle.addEventListener('change', toggleSmartReminders);
-
+            const toggle = document.getElementById('smart-reminders-toggle'); toggle.checked = state.smartReminders; toggle.addEventListener('change', toggleSmartReminders);
             document.getElementById('prev-month').onclick = () => { state.currentMonth.setMonth(state.currentMonth.getMonth()-1); renderCalendar(); };
             document.getElementById('next-month').onclick = () => { state.currentMonth.setMonth(state.currentMonth.getMonth()+1); renderCalendar(); };
-
-            document.getElementById('tasks-container').addEventListener('wheel', (e) => {
-                if(e.ctrlKey) {
-                    e.preventDefault();
-                    let s = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--zoom-scale')) || 1;
-                    if(e.deltaY < 0) s += 0.1; else s -= 0.1;
-                    s = Math.min(Math.max(0.6, s), 1.5);
-                    document.documentElement.style.setProperty('--zoom-scale', s);
-                }
-            }, { passive: false });
-
-            renderCalendar();
-            renderTasks();
-            updatePendingCount();
-            lucide.createIcons();
+            document.getElementById('tasks-container').addEventListener('wheel', (e) => { if(e.ctrlKey) { e.preventDefault(); let s = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--zoom-scale')) || 1; if(e.deltaY < 0) s += 0.1; else s -= 0.1; s = Math.min(Math.max(0.6, s), 1.5); document.documentElement.style.setProperty('--zoom-scale', s); } }, { passive: false });
+            setInterval(() => { if(!state.smartReminders) return; const now = new Date(); const dateKey = formatDateKey(now); const tasks = state.tasks[dateKey] || []; tasks.forEach(task => { if(task.completed) return; const [sH, sM] = task.startTime.split(':').map(Number); const [eH, eM] = task.endTime.split(':').map(Number); const start = new Date(now); start.setHours(sH, sM, 0, 0); const end = new Date(now); end.setHours(eH, eM, 0, 0); const duration = end - start; const progress = (now - start) / duration; if(now >= start && !task.notifiedStart) { SoundSystem.playBell(); showNotification(`Starting: ${task.title}`, task.notes||"Focus time."); task.notifiedStart=true; saveAll(); } if(now >= end && !task.notifiedEnd) { SoundSystem.playBell(); showNotification("Time's Up", task.title); task.notifiedEnd=true; saveAll(); } if(progress >= 0.5 && progress < 0.6 && !task.notified50) { SoundSystem.playBeep(); showNotification("Halfway", task.title); task.notified50=true; saveAll(); } }); }, 1000);
+            switchTab('calendar'); renderCalendar(); renderTasks(); updatePendingCount(); lucide.createIcons();
         });
-
     </script>
 </body>
 </html>
