@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alarm Title Card</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Ensuring SF Pro Display is prioritized */
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: url('https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff2');
+            font-weight: 200 600;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        .hidden {
+            display: none;
+            opacity: 0;
+        }
+
+        /* Selection Screen Styles */
+        #selection-screen {
+            justify-content: center;
+        }
+
+        .choice-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px 40px;
+            margin: 10px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 280px;
+            text-align: center;
+        }
+
+        .choice-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
+        }
+
+        /* Alarm Screen Layout */
+        .time-header {
+            margin-top: 80px;
+            font-size: 6.5rem;
+            font-weight: 200;
+            color: #1a1a1a; /* Very dark grey */
+            letter-spacing: -2px;
+            line-height: 1;
+        }
+
+        .center-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 80px;
+            text-align: center;
+        }
+
+        .label-text {
+            font-size: 2.8rem;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
+            margin-bottom: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .label-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Clock Animation for 'O' (Smaller & Adjusted Down) */
+        .clock-o {
+            position: relative;
+            display: inline-block;
+            width: 1.4rem; /* Smaller clock */
+            height: 1.4rem;
+            border: 2px solid white;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin: 0 4px;
+            transform: translateY(2px); /* Moved down a touch */
+        }
+
+        .hand {
+            position: absolute;
+            background: white;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            border-radius: 1px;
+        }
+
+        .hour-hand {
+            width: 1.5px;
+            height: 25%;
+            transform: rotate(225deg);
+        }
+
+        .minute-hand {
+            width: 1px;
+            height: 40%;
+            animation: tick 60s steps(60) infinite;
+        }
+
+        @keyframes tick {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Orange Stop Button */
+        .stop-btn {
+            background: #ff9f0a;
+            color: #fff;
+            width: 280px;
+            padding: 20px;
+            border-radius: 60px; /* High corner radius */
+            font-size: 1.35rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .stop-btn:active {
+            opacity: 0.7;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(10,10,10,0.5) 0%, rgba(0,0,0,1) 100%);
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="selection-screen" class="screen">
+        <h2 class="text-xl mb-8 opacity-60">Select Title Version</h2>
+        <button class="choice-btn" onclick="showAlarm('Alarm')">Alarm</button>
+        <button class="choice-btn" onclick="showAlarm('Nothing But Time')">Nothing But Time</button>
+    </div>
+
+    <div id="alarm-screen" class="screen hidden">
+        <div class="overlay"></div>
+        
+        <div class="time-header">7:30</div>
+        
+        <div class="center-content">
+            <div id="alarm-label" class="label-text">
+                <!-- Content dynamic via JS -->
+            </div>
+
+            <div class="stop-btn" onclick="reset()">Stop</div>
+        </div>
+    </div>
+
+    <script>
+        function showAlarm(type) {
+            const selection = document.getElementById('selection-screen');
+            const alarm = document.getElementById('alarm-screen');
+            const label = document.getElementById('alarm-label');
+
+            selection.classList.add('hidden');
+            alarm.classList.remove('hidden');
+            alarm.style.opacity = '1';
+
+            if (type === 'Alarm') {
+                label.innerHTML = `Alarm`;
+            } else {
+                label.innerHTML = `
+                    <div class="label-row">
+                        N<span class="clock-o">
+                            <div class="hand hour-hand"></div>
+                            <div class="hand minute-hand"></div>
+                        </span>thing
+                    </div>
+                    <div class="label-row">But Time</div>
+                `;
+            }
+        }
+
+        function reset() {
+            const selection = document.getElementById('selection-screen');
+            const alarm = document.getElementById('alarm-screen');
+            alarm.style.opacity = '0';
+            setTimeout(() => {
+                alarm.classList.add('hidden');
+                selection.classList.remove('hidden');
+            }, 800);
+        }
+    </script>
+</body>
+</html>
